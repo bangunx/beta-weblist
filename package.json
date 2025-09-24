@@ -1,16 +1,38 @@
 {
-  "name": "nodejs",
+  "name": "gamelistai",
   "version": "1.0.0",
-  "description": "",
+  "description": "A comprehensive collection of web-based tools and games powered by AI",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "ai",
+    "tools",
+    "games",
+    "web",
+    "nodejs",
+    "express",
+    "groq",
+    "javascript"
+  ],
+  "author": "BangunX",
   "license": "ISC",
   "dependencies": {
     "@types/node": "^18.0.6",
     "express": "^4.19.2"
-  }
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bangunx/weblist.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bangunx/weblist/issues"
+  },
+  "homepage": "https://github.com/bangunx/weblist#readme"
 }
