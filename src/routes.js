@@ -13,7 +13,7 @@ const renderFolderPage = require("./templates/folderPage");
 
 const router = express.Router();
 
-const ALLOWED_FILTERS = new Set(["all", "games", "tools", "mind"]);
+const ALLOWED_FILTERS = new Set(["all", "games", "tools", "mind", "random"]);
 
 const emptyListing = {
   entries: [],
@@ -45,9 +45,10 @@ router.get("/", async (req, res, next) => {
   const includeGames = filter === "all" || filter === "games";
   const includeTools = filter === "all" || filter === "tools";
   const includeMind = filter === "all" || filter === "mind";
+  const includeRandom = filter === "all" || filter === "random";
 
   try {
-    const [gamesListing, toolsListing, mindListing] = await Promise.all([
+    const [gamesListing, toolsListing, mindListing, randomListing] = await Promise.all([
       includeGames
         ? getPaginatedEntries(
             DIRECTORIES.games,
@@ -72,18 +73,28 @@ router.get("/", async (req, res, next) => {
             searchTerm,
           )
         : Promise.resolve(emptyListing),
+      includeRandom
+        ? getPaginatedEntries(
+            DIRECTORIES.random,
+            currentPage,
+            itemsPerPage,
+            searchTerm,
+          )
+        : Promise.resolve(emptyListing),
     ]);
 
     const totalPages = Math.max(
       gamesListing.totalPages || 0,
       toolsListing.totalPages || 0,
       mindListing.totalPages || 0,
+      randomListing.totalPages || 0,
     );
 
     const normalizedPage = Math.max(
       gamesListing.currentPage || 1,
       toolsListing.currentPage || 1,
       mindListing.currentPage || 1,
+      randomListing.currentPage || 1,
     );
 
     const html = renderHomePage({
@@ -93,6 +104,7 @@ router.get("/", async (req, res, next) => {
       games: gamesListing,
       tools: toolsListing,
       mind: mindListing,
+      random: randomListing,
       totalPages,
       searchTerm,
     });
@@ -155,6 +167,19 @@ router.get("/mind", (req, res, next) =>
       directory: DIRECTORIES.mind,
       title: "Mind Projects",
       folderKey: "mind",
+      actionLabel: "Open",
+    },
+    req,
+    res,
+    next,
+  ));
+
+router.get("/random", (req, res, next) =>
+  handleFolderRequest(
+    {
+      directory: DIRECTORIES.random,
+      title: "Random Experiments",
+      folderKey: "random",
       actionLabel: "Open",
     },
     req,

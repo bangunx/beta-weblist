@@ -40,6 +40,7 @@ const FILTER_OPTIONS = [
   { value: "games", label: "Games" },
   { value: "tools", label: "Tools" },
   { value: "mind", label: "Mind" },
+  { value: "random", label: "Random" },
 ];
 
 function buildOption({ value, label }, selectedValue) {
@@ -103,6 +104,7 @@ function renderHomePage({
   games,
   tools,
   mind,
+  random,
   totalPages,
   searchTerm = "",
 }) {
@@ -110,6 +112,7 @@ function renderHomePage({
   const gamesEntries = games?.entries ?? [];
   const toolsEntries = tools?.entries ?? [];
   const mindEntries = mind?.entries ?? [];
+  const randomEntries = random?.entries ?? [];
   const gamesSection = filter === "all" || filter === "games"
     ? `
       <h2 class="text-2xl font-bold mb-4">Games</h2>
@@ -133,6 +136,15 @@ function renderHomePage({
       <h2 class="text-2xl font-bold mb-4">Mind</h2>
       <div id="mind-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         ${renderEntryCards(mindEntries, "mind", "Open")}
+      </div>
+    `
+    : "";
+
+  const randomSection = filter === "all" || filter === "random"
+    ? `
+      <h2 class="text-2xl font-bold mb-4">Random</h2>
+      <div id="random-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${renderEntryCards(randomEntries, "random", "Open")}
       </div>
     `
     : "";
@@ -182,6 +194,7 @@ function renderHomePage({
         ${gamesSection}
         ${toolsSection}
         ${mindSection}
+        ${randomSection}
       </div>
 
       ${renderPagination(totalPages, currentPage, itemsPerPage, filter, searchTerm)}

@@ -10,6 +10,7 @@ function createApp() {
   app.use("/game", express.static(DIRECTORIES.games));
   app.use("/tools", express.static(DIRECTORIES.tools));
   app.use("/mind", express.static(DIRECTORIES.mind));
+  app.use("/random", express.static(DIRECTORIES.random));
 
   app.use(routes);
 
