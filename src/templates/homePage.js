@@ -1,4 +1,6 @@
 const layout = require("./layout");
+const { renderEntryCards } = require("./components");
+const { escapeHtml } = require("./utils");
 const { ITEMS_PER_PAGE_OPTIONS } = require("../config");
 
 const hackerThemeStyles = `
@@ -37,6 +39,7 @@ const FILTER_OPTIONS = [
   { value: "all", label: "All" },
   { value: "games", label: "Games" },
   { value: "tools", label: "Tools" },
+  { value: "mind", label: "Mind" },
 ];
 
 function buildOption({ value, label }, selectedValue) {
@@ -55,35 +58,7 @@ function renderFilterSelect(selectedValue) {
   return FILTER_OPTIONS.map((option) => buildOption(option, selectedValue)).join("");
 }
 
-function renderFileCards(files, folderKey, actionLabel) {
-  if (!files.length) {
-    return `
-      <div class="col-span-full text-center text-gray-500">
-        No HTML files match the current selection.
-      </div>
-    `;
-  }
-
-  return files
-    .map(
-      (file) => `
-        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-300">
-          <h3 class="font-semibold mb-2">${file}</h3>
-          <div class="flex space-x-2">
-            <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm" onclick="loadFile('${folderKey}', '${file}')">
-              ${actionLabel}
-            </button>
-            <a href="/${folderKey}/${file}" target="_blank" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm">
-              Open
-            </a>
-          </div>
-        </div>
-      `,
-    )
-    .join("");
-}
-
-function renderPagination(totalPages, currentPage, itemsPerPage, filter) {
+function renderPagination(totalPages, currentPage, itemsPerPage, filter, searchTerm) {
   if (!totalPages || totalPages <= 1) {
     return "";
   }
@@ -94,9 +69,19 @@ function renderPagination(totalPages, currentPage, itemsPerPage, filter) {
     const classes = isActive
       ? "bg-blue-500 text-white"
       : "bg-white text-blue-500";
+    const params = new URLSearchParams({
+      items: String(itemsPerPage),
+      page: String(page),
+      filter,
+    });
+
+    if (searchTerm) {
+      params.set("search", searchTerm);
+    }
+
     return `
       <a
-        href="/?items=${itemsPerPage}&page=${page}&filter=${filter}"
+        href="/?${params.toString()}"
         class="px-3 py-2 m-1 ${classes} rounded-md"
       >
         ${page}
@@ -117,13 +102,19 @@ function renderHomePage({
   filter,
   games,
   tools,
+  mind,
   totalPages,
+  searchTerm = "",
 }) {
+  const searchValue = escapeHtml(searchTerm);
+  const gamesEntries = games?.entries ?? [];
+  const toolsEntries = tools?.entries ?? [];
+  const mindEntries = mind?.entries ?? [];
   const gamesSection = filter === "all" || filter === "games"
     ? `
       <h2 class="text-2xl font-bold mb-4">Games</h2>
       <div id="game-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-        ${renderFileCards(games.files, "game", "Play")}
+        ${renderEntryCards(gamesEntries, "game", "Play")}
       </div>
     `
     : "";
@@ -132,7 +123,16 @@ function renderHomePage({
     ? `
       <h2 class="text-2xl font-bold mb-4">Tools</h2>
       <div id="tools-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        ${renderFileCards(tools.files, "tools", "Use")}
+        ${renderEntryCards(toolsEntries, "tools", "Use")}
+      </div>
+    `
+    : "";
+
+  const mindSection = filter === "all" || filter === "mind"
+    ? `
+      <h2 class="text-2xl font-bold mb-4">Mind</h2>
+      <div id="mind-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${renderEntryCards(mindEntries, "mind", "Open")}
       </div>
     `
     : "";
@@ -141,8 +141,8 @@ function renderHomePage({
     <div id="main-container" class="container mx-auto px-4 py-8">
       <h1 class="text-4xl font-bold text-center mb-8">Game and Tool Files</h1>
 
-      <div class="mb-6 flex flex-wrap justify-between items-center">
-        <div>
+      <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div class="flex flex-wrap items-center">
           <select id="itemsPerPage" class="bg-white border border-gray-300 rounded-md px-4 py-2 mb-2 sm:mb-0 mr-2" onchange="changeItemsPerPage()">
             ${renderItemsPerPageSelect(itemsPerPage)}
           </select>
@@ -150,7 +150,22 @@ function renderHomePage({
             ${renderFilterSelect(filter)}
           </select>
         </div>
-        <div>
+        <form class="flex flex-wrap items-center gap-2" onsubmit="submitSearch(event)">
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Search games and tools"
+            value="${searchValue}"
+            class="flex-1 min-w-[200px] rounded-md border border-gray-300 px-4 py-2"
+          />
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+            Search
+          </button>
+          ${searchTerm
+            ? '<button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded" onclick="clearSearch()">Clear</button>'
+            : ""}
+        </form>
+        <div class="flex items-center">
           <button id="toggleViewBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mr-2" onclick="toggleView()">
             Toggle View
           </button>
@@ -166,9 +181,10 @@ function renderHomePage({
       <div id="folders-container">
         ${gamesSection}
         ${toolsSection}
+        ${mindSection}
       </div>
 
-      ${renderPagination(totalPages, currentPage, itemsPerPage, filter)}
+      ${renderPagination(totalPages, currentPage, itemsPerPage, filter, searchTerm)}
 
       <div id="file-container" class="mt-8 hidden">
         <div class="control-buttons">

@@ -15,14 +15,25 @@
     }
   }
 
+  function encodePath(pathValue) {
+    return pathValue
+      .split("/")
+      .filter((segment) => segment.length > 0)
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+  }
+
   function buildFileUrl(folder, file) {
     const base = (folder || "").trim();
+    const encodedFile = encodePath(file);
+
     if (!base) {
-      return file;
+      return encodedFile ? `/${encodedFile}` : "/";
     }
+
     const withLeadingSlash = base.startsWith("/") ? base : `/${base}`;
     const sanitizedBase = withLeadingSlash.replace(/\/+$/, "");
-    return `${sanitizedBase}/${file}`;
+    return encodedFile ? `${sanitizedBase}/${encodedFile}` : sanitizedBase;
   }
 
   function isFullscreenActive() {
@@ -34,26 +45,74 @@
     );
   }
 
-  window.changeItemsPerPage = function changeItemsPerPage() {
+  function buildBaseParams() {
+    const params = new URLSearchParams();
     const itemsSelect = getElement("itemsPerPage");
     const filterSelect = getElement("filterSelect");
 
-    if (!itemsSelect || !filterSelect) {
+    if (itemsSelect) {
+      params.set("items", itemsSelect.value);
+    }
+
+    if (filterSelect) {
+      params.set("filter", filterSelect.value);
+    }
+
+    return params;
+  }
+
+  function appendSearchParam(params) {
+    const searchInput = getElement("searchInput");
+
+    if (!searchInput) {
+      params.delete("search");
       return;
     }
 
-    window.location.href = `/?items=${itemsSelect.value}&filter=${filterSelect.value}`;
+    const term = searchInput.value.trim();
+
+    if (term) {
+      params.set("search", term);
+    } else {
+      params.delete("search");
+    }
+  }
+
+  function navigateWithParams(params) {
+    const query = params.toString();
+    window.location.href = query ? `/?${query}` : "/";
+  }
+
+  window.changeItemsPerPage = function changeItemsPerPage() {
+    const params = buildBaseParams();
+    appendSearchParam(params);
+    navigateWithParams(params);
   };
 
   window.changeFilter = function changeFilter() {
-    const itemsSelect = getElement("itemsPerPage");
-    const filterSelect = getElement("filterSelect");
+    const params = buildBaseParams();
+    appendSearchParam(params);
+    navigateWithParams(params);
+  };
 
-    if (!itemsSelect || !filterSelect) {
-      return;
+  window.submitSearch = function submitSearch(event) {
+    if (event && typeof event.preventDefault === "function") {
+      event.preventDefault();
     }
 
-    window.location.href = `/?items=${itemsSelect.value}&filter=${filterSelect.value}`;
+    const params = buildBaseParams();
+    appendSearchParam(params);
+    navigateWithParams(params);
+  };
+
+  window.clearSearch = function clearSearch() {
+    const searchInput = getElement("searchInput");
+    if (searchInput) {
+      searchInput.value = "";
+    }
+
+    const params = buildBaseParams();
+    navigateWithParams(params);
   };
 
   window.toggleView = function toggleView() {
@@ -80,7 +139,7 @@
     }
   };
 
-  window.loadFile = function loadFile(folder, file) {
+  window.loadFile = function loadFile(folder, file, displayName) {
     const fileTitle = getElement("file-title");
     const fileFrame = getElement("file-frame");
     const fileContainer = getElement("file-container");
@@ -88,7 +147,7 @@
     const pagination = getElement("pagination");
 
     if (fileTitle) {
-      fileTitle.textContent = file;
+      fileTitle.textContent = displayName || file;
     }
 
     if (fileFrame) {
@@ -98,6 +157,18 @@
     showElement(fileContainer);
     hideElement(foldersContainer);
     hideElement(pagination);
+  };
+
+  window.loadFromDataset = function loadFromDataset(element) {
+    if (!element) {
+      return;
+    }
+
+    const folder = element.getAttribute("data-folder") || "";
+    const file = element.getAttribute("data-path") || "";
+    const label = element.getAttribute("data-label") || file;
+
+    window.loadFile(folder, file, label);
   };
 
   window.closeFile = function closeFile() {

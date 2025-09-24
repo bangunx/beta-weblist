@@ -1,19 +1,76 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+const HTML_EXTENSION = ".html";
+const SORT_OPTIONS = { sensitivity: "base" };
+
 function isHtmlFile(entry) {
-  return (
-    entry.isFile() && path.extname(entry.name).toLowerCase() === ".html"
-  );
+  return entry.isFile() && path.extname(entry.name).toLowerCase() === HTML_EXTENSION;
 }
 
-async function readHtmlFiles(directory) {
+function createFileEntry(name) {
+  return {
+    name,
+    label: name,
+    url: name,
+    type: "file",
+  };
+}
+
+async function findFirstHtmlFile(directoryPath) {
   try {
-    const entries = await fs.readdir(directory, { withFileTypes: true });
-    return entries
+    const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+    const htmlFiles = entries
       .filter(isHtmlFile)
       .map((entry) => entry.name)
-      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+      .sort((a, b) => a.localeCompare(b, undefined, SORT_OPTIONS));
+
+    if (!htmlFiles.length) {
+      return null;
+    }
+
+    const indexHtml = htmlFiles.find((file) => file.toLowerCase() === "index.html");
+    return indexHtml || htmlFiles[0];
+  } catch (error) {
+    if (error && (error.code === "ENOENT" || error.code === "ENOTDIR")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function buildProjectEntry(directory, dirName) {
+  const projectRoot = path.join(directory, dirName);
+  const entryFile = await findFirstHtmlFile(projectRoot);
+
+  if (!entryFile) {
+    return null;
+  }
+
+  const relativePath = path.posix.join(dirName, entryFile);
+  return {
+    name: dirName,
+    label: dirName,
+    url: relativePath,
+    type: "project",
+  };
+}
+
+async function readDirectoryEntries(directory) {
+  try {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+
+    const fileEntries = entries.filter(isHtmlFile).map((entry) => createFileEntry(entry.name));
+
+    const potentialProjects = entries.filter((entry) => entry.isDirectory());
+
+    const projectEntries = await Promise.all(
+      potentialProjects.map((entry) => buildProjectEntry(directory, entry.name)),
+    );
+
+    const combinedEntries = [...fileEntries, ...projectEntries.filter(Boolean)];
+
+    return combinedEntries.sort((a, b) => a.label.localeCompare(b.label, undefined, SORT_OPTIONS));
   } catch (error) {
     if (error && error.code === "ENOENT") {
       const err = new Error(`Directory not found: ${directory}`);
@@ -24,31 +81,45 @@ async function readHtmlFiles(directory) {
   }
 }
 
-function paginate(files, currentPage, itemsPerPage) {
-  const totalItems = files.length;
+function filterEntries(entries, searchTerm) {
+  if (!searchTerm) {
+    return entries;
+  }
+
+  const normalizedTerm = searchTerm.trim().toLowerCase();
+
+  if (!normalizedTerm) {
+    return entries;
+  }
+
+  return entries.filter((entry) => {
+    const haystack = `${entry.label} ${entry.url}`.toLowerCase();
+    return normalizedTerm.split(/\s+/).every((segment) => haystack.includes(segment));
+  });
+}
+
+function paginateEntries(entries, currentPage, itemsPerPage) {
+  const totalItems = entries.length;
   const totalPages = totalItems ? Math.ceil(totalItems / itemsPerPage) : 0;
-  const safePage = totalPages
-    ? Math.min(Math.max(1, currentPage), totalPages)
-    : 1;
+  const safePage = totalPages ? Math.min(Math.max(1, currentPage), totalPages) : 1;
   const startIndex = (safePage - 1) * itemsPerPage;
-  const paginatedFiles = totalPages
-    ? files.slice(startIndex, startIndex + itemsPerPage)
-    : [];
+  const paginatedEntries = totalPages ? entries.slice(startIndex, startIndex + itemsPerPage) : [];
 
   return {
-    files: paginatedFiles,
+    entries: paginatedEntries,
     totalItems,
     totalPages,
     currentPage: totalPages ? safePage : 1,
   };
 }
 
-async function getPaginatedHtmlFiles(directory, currentPage, itemsPerPage) {
-  const files = await readHtmlFiles(directory);
-  return paginate(files, currentPage, itemsPerPage);
+async function getPaginatedEntries(directory, currentPage, itemsPerPage, searchTerm = "") {
+  const entries = await readDirectoryEntries(directory);
+  const filtered = filterEntries(entries, searchTerm);
+  return paginateEntries(filtered, currentPage, itemsPerPage);
 }
 
 module.exports = {
-  getPaginatedHtmlFiles,
-  readHtmlFiles,
+  getPaginatedEntries,
+  readDirectoryEntries,
 };

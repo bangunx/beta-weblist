@@ -5,6 +5,7 @@ const rootDir = path.join(__dirname, "..");
 const DIRECTORIES = {
   games: path.join(rootDir, "game"),
   tools: path.join(rootDir, "tools"),
+  mind: path.join(rootDir, "mind"),
 };
 
 module.exports = {

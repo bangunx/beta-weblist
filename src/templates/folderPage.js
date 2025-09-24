@@ -1,58 +1,26 @@
 const layout = require("./layout");
-
-function normalizeFolderUrl(folderUrl) {
-  if (!folderUrl) {
-    return "";
-  }
-  return folderUrl.endsWith("/") ? folderUrl.slice(0, -1) : folderUrl;
-}
-
-function renderFileCards(files, folderUrl, actionLabel) {
-  if (!files.length) {
-    return `
-      <div class="col-span-full text-center text-gray-500">
-        No HTML files found in this folder.
-      </div>
-    `;
-  }
-
-  return files
-    .map(
-      (file) => `
-        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-300">
-          <h3 class="font-semibold mb-2">${file}</h3>
-          <div class="flex space-x-2">
-            <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm" onclick="loadFile('${folderUrl}', '${file}')">
-              ${actionLabel}
-            </button>
-            <a href="${folderUrl}/${file}" target="_blank" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm">
-              Open
-            </a>
-          </div>
-        </div>
-      `,
-    )
-    .join("");
-}
+const { renderEntryCards } = require("./components");
+const { escapeHtml } = require("./utils");
 
 function renderFolderPage({
   title,
-  folderUrl,
-  files,
+  folderKey,
+  entries,
   actionLabel = "Open",
 }) {
-  const normalizedFolderUrl = normalizeFolderUrl(folderUrl);
+  const safeTitle = escapeHtml(title);
+  const folder = folderKey || "";
   const content = `
     <div id="main-container" class="container mx-auto px-4 py-8">
       <div class="flex justify-between items-center mb-8">
-        <h1 class="text-4xl font-bold">${title}</h1>
+        <h1 class="text-4xl font-bold">${safeTitle}</h1>
         <a href="/" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
           Home
         </a>
       </div>
       <div id="folders-container">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          ${renderFileCards(files, normalizedFolderUrl, actionLabel)}
+          ${renderEntryCards(entries ?? [], folder, actionLabel, "No HTML files found in this folder.")}
         </div>
       </div>
 
@@ -71,8 +39,9 @@ function renderFolderPage({
   `;
 
   return layout({
-    title,
+    title: safeTitle,
     bodyClass: "bg-gray-100 min-h-screen",
+    bodyId: "body",
     content,
     scripts: '<script src="/scripts/app.js"></script>',
   });

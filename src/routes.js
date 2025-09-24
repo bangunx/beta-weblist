@@ -5,18 +5,18 @@ const {
   MAX_ITEMS_PER_PAGE,
 } = require("./config");
 const {
-  getPaginatedHtmlFiles,
-  readHtmlFiles,
+  getPaginatedEntries,
+  readDirectoryEntries,
 } = require("./services/fileService");
 const renderHomePage = require("./templates/homePage");
 const renderFolderPage = require("./templates/folderPage");
 
 const router = express.Router();
 
-const ALLOWED_FILTERS = new Set(["all", "games", "tools"]);
+const ALLOWED_FILTERS = new Set(["all", "games", "tools", "mind"]);
 
 const emptyListing = {
-  files: [],
+  entries: [],
   totalItems: 0,
   totalPages: 0,
   currentPage: 1,
@@ -38,26 +38,53 @@ router.get("/", async (req, res, next) => {
   const filter = ALLOWED_FILTERS.has(req.query.filter)
     ? req.query.filter
     : "all";
+  const searchTerm = typeof req.query.search === "string"
+    ? req.query.search.trim()
+    : "";
 
   const includeGames = filter === "all" || filter === "games";
   const includeTools = filter === "all" || filter === "tools";
+  const includeMind = filter === "all" || filter === "mind";
 
   try {
-    const [gamesListing, toolsListing] = await Promise.all([
+    const [gamesListing, toolsListing, mindListing] = await Promise.all([
       includeGames
-        ? getPaginatedHtmlFiles(DIRECTORIES.games, currentPage, itemsPerPage)
+        ? getPaginatedEntries(
+            DIRECTORIES.games,
+            currentPage,
+            itemsPerPage,
+            searchTerm,
+          )
         : Promise.resolve(emptyListing),
       includeTools
-        ? getPaginatedHtmlFiles(DIRECTORIES.tools, currentPage, itemsPerPage)
+        ? getPaginatedEntries(
+            DIRECTORIES.tools,
+            currentPage,
+            itemsPerPage,
+            searchTerm,
+          )
+        : Promise.resolve(emptyListing),
+      includeMind
+        ? getPaginatedEntries(
+            DIRECTORIES.mind,
+            currentPage,
+            itemsPerPage,
+            searchTerm,
+          )
         : Promise.resolve(emptyListing),
     ]);
 
     const totalPages = Math.max(
       gamesListing.totalPages || 0,
       toolsListing.totalPages || 0,
+      mindListing.totalPages || 0,
     );
 
-    const normalizedPage = totalPages ? Math.min(currentPage, totalPages) : 1;
+    const normalizedPage = Math.max(
+      gamesListing.currentPage || 1,
+      toolsListing.currentPage || 1,
+      mindListing.currentPage || 1,
+    );
 
     const html = renderHomePage({
       itemsPerPage,
@@ -65,7 +92,9 @@ router.get("/", async (req, res, next) => {
       filter,
       games: gamesListing,
       tools: toolsListing,
+      mind: mindListing,
       totalPages,
+      searchTerm,
     });
 
     res.send(html);
@@ -77,15 +106,15 @@ router.get("/", async (req, res, next) => {
 async function handleFolderRequest({
   directory,
   title,
-  folderUrl,
+  folderKey,
   actionLabel,
 }, req, res, next) {
   try {
-    const files = await readHtmlFiles(directory);
+    const entries = await readDirectoryEntries(directory);
     const html = renderFolderPage({
       title,
-      folderUrl,
-      files,
+      folderKey,
+      entries,
       actionLabel,
     });
     res.send(html);
@@ -99,7 +128,7 @@ router.get("/game", (req, res, next) =>
     {
       directory: DIRECTORIES.games,
       title: "Game Files",
-      folderUrl: "/game",
+      folderKey: "game",
       actionLabel: "Play",
     },
     req,
@@ -112,8 +141,21 @@ router.get("/tools", (req, res, next) =>
     {
       directory: DIRECTORIES.tools,
       title: "Tool Files",
-      folderUrl: "/tools",
+      folderKey: "tools",
       actionLabel: "Use",
+    },
+    req,
+    res,
+    next,
+  ));
+
+router.get("/mind", (req, res, next) =>
+  handleFolderRequest(
+    {
+      directory: DIRECTORIES.mind,
+      title: "Mind Projects",
+      folderKey: "mind",
+      actionLabel: "Open",
     },
     req,
     res,

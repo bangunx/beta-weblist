@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Detection App</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-eye"></i> Face Detection</h1>
+            <p>Real-time face detection using your camera</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Mode Selection -->
+            <div class="mode-selector">
+                <button id="cameraModeBtn" class="mode-btn active">
+                    <i class="fas fa-video"></i> Camera Mode
+                </button>
+                <button id="uploadModeBtn" class="mode-btn">
+                    <i class="fas fa-upload"></i> Upload Image
+                </button>
+            </div>
+
+            <!-- Camera Mode -->
+            <div id="cameraMode" class="detection-mode">
+                <div class="video-container">
+                    <video id="video" autoplay muted></video>
+                    <canvas id="canvas"></canvas>
+                    <div class="overlay">
+                        <div class="detection-info" id="detectionInfo">
+                            <span id="faceCount">0 faces detected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Mode -->
+            <div id="uploadMode" class="detection-mode hidden">
+                <div class="upload-container">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-content">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h3>Upload Image for Face Detection</h3>
+                            <p>Drag and drop an image here or click to browse</p>
+                            <input type="file" id="imageInput" accept="image/*" hidden>
+                            <button class="btn btn-primary" onclick="document.getElementById('imageInput').click()">
+                                <i class="fas fa-folder-open"></i> Choose Image
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="uploaded-image-container hidden" id="uploadedImageContainer">
+                        <div class="image-preview">
+                            <img id="uploadedImage" alt="Uploaded Image">
+                            <canvas id="uploadCanvas"></canvas>
+                        </div>
+                        <div class="image-controls">
+                            <button id="detectUploadedBtn" class="btn btn-success">
+                                <i class="fas fa-search"></i> Detect Faces
+                            </button>
+                            <button id="clearImageBtn" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Clear Image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="startBtn" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Start Camera
+                </button>
+                <button id="stopBtn" class="btn btn-secondary" disabled>
+                    <i class="fas fa-stop"></i> Stop Camera
+                </button>
+                <button id="captureBtn" class="btn btn-success" disabled>
+                    <i class="fas fa-camera"></i> Capture Photo
+                </button>
+                <button id="toggleDetectionBtn" class="btn btn-info" disabled>
+                    <i class="fas fa-eye"></i> Toggle Detection
+                </button>
+            </div>
+
+            <div class="settings">
+                <div class="setting-group">
+                    <label for="detectionInterval">Detection Interval (ms):</label>
+                    <input type="range" id="detectionInterval" min="50" max="500" value="100">
+                    <span id="intervalValue">100ms</span>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="detectionSensitivity">Detection Sensitivity:</label>
+                    <input type="range" id="detectionSensitivity" min="0.1" max="1.0" step="0.1" value="0.5">
+                    <span id="sensitivityValue">0.5</span>
+                </div>
+            </div>
+
+            <div class="results">
+                <h3>Detection Results</h3>
+                <div id="resultsContainer">
+                    <div class="result-item">
+                        <strong>Status:</strong> <span id="status">Ready to start</span>
+                    </div>
+                    <div class="result-item">
+                        <strong>Faces Detected:</strong> <span id="faceCountResult">0</span>
+                    </div>
+                    <div class="result-item">
+                        <strong>Detection Accuracy:</strong> <span id="accuracy">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="captured-photos" id="capturedPhotos">
+                <h3>Captured Photos</h3>
+                <div id="photoGrid"></div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>How to Use</h3>
+            <div class="info-sections">
+                <div class="info-section">
+                    <h4><i class="fas fa-video"></i> Camera Mode</h4>
+                    <ul>
+                        <li>Click "Start Camera" to begin face detection</li>
+                        <li>Allow camera access when prompted</li>
+                        <li>Faces will be highlighted with rectangles</li>
+                        <li>Click "Capture Photo" to save the current frame</li>
+                    </ul>
+                </div>
+                <div class="info-section">
+                    <h4><i class="fas fa-upload"></i> Upload Mode</h4>
+                    <ul>
+                        <li>Switch to "Upload Image" mode</li>
+                        <li>Drag and drop an image or click to browse</li>
+                        <li>Click "Detect Faces" to analyze the uploaded image</li>
+                        <li>Faces will be highlighted with bounding boxes</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Loading face detection...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4"></script>
+    <script src="script.js"></script>
+</body>
+</html>
