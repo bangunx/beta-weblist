@@ -29,11 +29,16 @@ function createApp() {
   return app;
 }
 
+// Vercel serverless function handler
+module.exports = (req, res) => {
+  const app = createApp();
+  return app(req, res);
+};
+
+// For local development
 if (require.main === module) {
   const app = createApp();
   app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
   });
 }
-
-module.exports = { createApp };
