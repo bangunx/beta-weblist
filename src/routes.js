@@ -14,6 +14,7 @@ const renderFolderPage = require("./templates/folderPage");
 const router = express.Router();
 
 const ALLOWED_FILTERS = new Set(["all", "games", "tools", "mind", "random"]);
+const ALLOWED_SORTS = new Set(["asc", "desc"]);
 
 const emptyListing = {
   entries: [],
@@ -32,12 +33,20 @@ function normalizeItemsPerPage(value) {
   return Math.min(normalized, MAX_ITEMS_PER_PAGE);
 }
 
+function parseSortOrder(value) {
+  if (typeof value === "string" && ALLOWED_SORTS.has(value)) {
+    return value;
+  }
+  return "asc";
+}
+
 router.get("/", async (req, res, next) => {
   const itemsPerPage = normalizeItemsPerPage(req.query.items);
   const currentPage = parsePositiveInt(req.query.page, 1);
   const filter = ALLOWED_FILTERS.has(req.query.filter)
     ? req.query.filter
     : "all";
+  const sortOrder = parseSortOrder(req.query.sort);
   const searchTerm = typeof req.query.search === "string"
     ? req.query.search.trim()
     : "";
@@ -52,33 +61,45 @@ router.get("/", async (req, res, next) => {
       includeGames
         ? getPaginatedEntries(
             DIRECTORIES.games,
-            currentPage,
-            itemsPerPage,
-            searchTerm,
+            {
+              currentPage,
+              itemsPerPage,
+              searchTerm,
+              sortOrder,
+            },
           )
         : Promise.resolve(emptyListing),
       includeTools
         ? getPaginatedEntries(
             DIRECTORIES.tools,
-            currentPage,
-            itemsPerPage,
-            searchTerm,
+            {
+              currentPage,
+              itemsPerPage,
+              searchTerm,
+              sortOrder,
+            },
           )
         : Promise.resolve(emptyListing),
       includeMind
         ? getPaginatedEntries(
             DIRECTORIES.mind,
-            currentPage,
-            itemsPerPage,
-            searchTerm,
+            {
+              currentPage,
+              itemsPerPage,
+              searchTerm,
+              sortOrder,
+            },
           )
         : Promise.resolve(emptyListing),
       includeRandom
         ? getPaginatedEntries(
             DIRECTORIES.random,
-            currentPage,
-            itemsPerPage,
-            searchTerm,
+            {
+              currentPage,
+              itemsPerPage,
+              searchTerm,
+              sortOrder,
+            },
           )
         : Promise.resolve(emptyListing),
     ]);
@@ -107,6 +128,7 @@ router.get("/", async (req, res, next) => {
       random: randomListing,
       totalPages,
       searchTerm,
+      sortOrder,
     });
 
     res.send(html);

@@ -98,6 +98,18 @@ function filterEntries(entries, searchTerm) {
   });
 }
 
+function sortEntries(entries, sortOrder = "asc") {
+  if (!Array.isArray(entries) || entries.length <= 1) {
+    return entries;
+  }
+
+  const sorted = [...entries].sort((a, b) =>
+    a.label.localeCompare(b.label, undefined, SORT_OPTIONS),
+  );
+
+  return sortOrder === "desc" ? sorted.reverse() : sorted;
+}
+
 function paginateEntries(entries, currentPage, itemsPerPage) {
   const totalItems = entries.length;
   const totalPages = totalItems ? Math.ceil(totalItems / itemsPerPage) : 0;
@@ -113,10 +125,14 @@ function paginateEntries(entries, currentPage, itemsPerPage) {
   };
 }
 
-async function getPaginatedEntries(directory, currentPage, itemsPerPage, searchTerm = "") {
+async function getPaginatedEntries(
+  directory,
+  { currentPage, itemsPerPage, searchTerm = "", sortOrder = "asc" },
+) {
   const entries = await readDirectoryEntries(directory);
   const filtered = filterEntries(entries, searchTerm);
-  return paginateEntries(filtered, currentPage, itemsPerPage);
+  const sorted = sortEntries(filtered, sortOrder);
+  return paginateEntries(sorted, currentPage, itemsPerPage);
 }
 
 module.exports = {

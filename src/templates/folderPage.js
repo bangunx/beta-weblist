@@ -1,6 +1,7 @@
 const layout = require("./layout");
 const { renderEntryCards } = require("./components");
 const { escapeHtml } = require("./utils");
+const { darkThemeStyles, enhancedStyles } = require("./styles");
 
 function renderFolderPage({
   title,
@@ -10,21 +11,41 @@ function renderFolderPage({
 }) {
   const safeTitle = escapeHtml(title);
   const folder = folderKey || "";
+  const entryList = Array.isArray(entries) ? entries : [];
+  const totalFiles = entryList.length;
+  const subtitle = totalFiles
+    ? `${totalFiles} file siap dibuka`
+    : "Belum ada file HTML di folder ini.";
   const content = `
-    <div id="main-container" class="container mx-auto px-4 py-8">
-      <div class="flex justify-between items-center mb-8">
-        <h1 class="text-4xl font-bold">${safeTitle}</h1>
-        <a href="/" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
-          Home
-        </a>
-      </div>
-      <div id="folders-container">
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          ${renderEntryCards(entries ?? [], folder, actionLabel, "No HTML files found in this folder.")}
+    <div id="main-container" class="mx-auto px-4 py-12 space-y-10">
+      <header class="page-toolbar">
+        <div>
+          <h1 class="page-title">${safeTitle}</h1>
+          <p class="page-subtitle">${escapeHtml(subtitle)}</p>
+        </div>
+        <div class="page-toolbar__actions">
+          <button type="button" id="themeToggleBtn" class="setting-button" onclick="toggleTheme()" aria-pressed="false">
+            Mode Gelap
+          </button>
+          <button type="button" id="densityToggleBtn" class="setting-button" onclick="toggleDensity()" aria-pressed="false">
+            Mode Kompak
+          </button>
+          <a href="/" class="entry-button entry-button--primary">Beranda</a>
+        </div>
+      </header>
+
+      <div id="folders-container" class="page-surface">
+        <div class="page-grid">
+          ${renderEntryCards(
+            entryList,
+            folder,
+            actionLabel,
+            "Tidak ada file yang cocok di folder ini.",
+          )}
         </div>
       </div>
 
-      <div id="file-container" class="mt-8 hidden">
+      <div id="file-container" class="page-surface hidden">
         <div class="control-buttons">
           <button class="control-button" onclick="minimizeFile()">Minimize</button>
           <button class="control-button" onclick="toggleFullscreen()">Fullscreen</button>
@@ -40,8 +61,9 @@ function renderFolderPage({
 
   return layout({
     title: safeTitle,
-    bodyClass: "bg-gray-100 min-h-screen",
+    bodyClass: "min-h-screen",
     bodyId: "body",
+    styles: `${darkThemeStyles}\n${enhancedStyles}`,
     content,
     scripts: '<script src="/scripts/app.js"></script>',
   });

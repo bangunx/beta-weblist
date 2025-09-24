@@ -3,54 +3,29 @@ const { renderEntryCards } = require("./components");
 const { escapeHtml } = require("./utils");
 const { ITEMS_PER_PAGE_OPTIONS } = require("../config");
 
-const hackerThemeStyles = `
-  .hacker-theme {
-    background-color: #0c0c0c;
-    color: #00ff00;
-    font-family: 'Courier New', monospace;
-  }
-  .hacker-theme .bg-white {
-    background-color: #1c1c1c !important;
-  }
-  .hacker-theme .text-blue-500 {
-    color: #00ff00 !important;
-  }
-  .hacker-theme .bg-blue-500 {
-    background-color: #008000 !important;
-  }
-  .hacker-theme .bg-green-500 {
-    background-color: #006400 !important;
-  }
-  .hacker-theme .hover\:bg-blue-600:hover {
-    background-color: #006400 !important;
-  }
-  .hacker-theme .hover\:bg-green-600:hover {
-    background-color: #004b00 !important;
-  }
-  .hacker-theme .shadow-md {
-    box-shadow: 0 0 10px #00ff00;
-  }
-  .hacker-theme .hover\:shadow-lg:hover {
-    box-shadow: 0 0 15px #00ff00;
-  }
-`;
+const { darkThemeStyles, enhancedStyles } = require("./styles");
 
 const FILTER_OPTIONS = [
-  { value: "all", label: "All" },
+  { value: "all", label: "Semua" },
   { value: "games", label: "Games" },
   { value: "tools", label: "Tools" },
   { value: "mind", label: "Mind" },
   { value: "random", label: "Random" },
 ];
 
+const SORT_OPTIONS = [
+  { value: "asc", label: "A → Z" },
+  { value: "desc", label: "Z → A" },
+];
+
 function buildOption({ value, label }, selectedValue) {
   const selected = value === selectedValue ? "selected" : "";
-  return `<option value="${value}" ${selected}>${label}</option>`;
+  return `<option value="${value}" ${selected}>${escapeHtml(label)}</option>`;
 }
 
 function renderItemsPerPageSelect(selectedValue) {
   const options = ITEMS_PER_PAGE_OPTIONS.map((value) =>
-    buildOption({ value: String(value), label: `${value} items` }, String(selectedValue)),
+    buildOption({ value: String(value), label: `${value} item` }, String(selectedValue)),
   );
   return options.join("");
 }
@@ -59,7 +34,11 @@ function renderFilterSelect(selectedValue) {
   return FILTER_OPTIONS.map((option) => buildOption(option, selectedValue)).join("");
 }
 
-function renderPagination(totalPages, currentPage, itemsPerPage, filter, searchTerm) {
+function renderSortSelect(selectedValue) {
+  return SORT_OPTIONS.map((option) => buildOption(option, selectedValue)).join("");
+}
+
+function renderPagination(totalPages, currentPage, itemsPerPage, filter, sortOrder, searchTerm) {
   if (!totalPages || totalPages <= 1) {
     return "";
   }
@@ -67,13 +46,12 @@ function renderPagination(totalPages, currentPage, itemsPerPage, filter, searchT
   const links = Array.from({ length: totalPages }, (_, index) => {
     const page = index + 1;
     const isActive = page === currentPage;
-    const classes = isActive
-      ? "bg-blue-500 text-white"
-      : "bg-white text-blue-500";
+    const classes = isActive ? "bg-blue-500 text-white" : "bg-white text-blue-500";
     const params = new URLSearchParams({
       items: String(itemsPerPage),
       page: String(page),
       filter,
+      sort: sortOrder,
     });
 
     if (searchTerm) {
@@ -81,10 +59,7 @@ function renderPagination(totalPages, currentPage, itemsPerPage, filter, searchT
     }
 
     return `
-      <a
-        href="/?${params.toString()}"
-        class="px-3 py-2 m-1 ${classes} rounded-md"
-      >
+      <a href="/?${params.toString()}" class="px-3 py-2 m-1 ${classes} rounded-md">
         ${page}
       </a>
     `;
@@ -97,10 +72,71 @@ function renderPagination(totalPages, currentPage, itemsPerPage, filter, searchT
   `;
 }
 
+function formatNumber(value) {
+  const safeValue = Number.isFinite(value) ? value : 0;
+  return safeValue.toLocaleString("id-ID");
+}
+
+function renderMetricChip({ label, value, caption }) {
+  return `
+    <div class="metric-chip">
+      <span class="metric-chip__value">${value}</span>
+      <div class="metric-chip__meta">
+        <span class="metric-chip__label">${escapeHtml(label)}</span>
+        <p class="metric-chip__caption">${escapeHtml(caption)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderMetricsRow(stats) {
+  if (!stats.length) {
+    return "";
+  }
+
+  return `
+    <div class="hero__metrics-grid">
+      ${stats.map(renderMetricChip).join("")}
+    </div>
+  `;
+}
+
+function renderQuickFilters(selectedFilter) {
+  return FILTER_OPTIONS.map((option) => {
+    const label = escapeHtml(option.label);
+    const value = escapeHtml(option.value);
+    const isActive = option.value === selectedFilter;
+    const classes = isActive ? "quick-chip quick-chip--active" : "quick-chip";
+    return `
+      <button type="button" class="${classes}" data-filter="${value}" onclick="setFilter('${value}')">
+        ${label}
+      </button>
+    `;
+  }).join("");
+}
+
+function renderCategorySection({ title, id, entries, folderKey, actionLabel }) {
+  const safeTitle = escapeHtml(title);
+  const emptyMessage = `Belum ada ${title} yang cocok dengan filter ini.`;
+
+  return `
+    <section class="catalog-section" id="section-${escapeHtml(id)}">
+      <div class="flex items-center justify-between mb-4">
+        <h2>${safeTitle}</h2>
+        <a class="link-button" href="/${escapeHtml(folderKey)}" title="Lihat semua ${safeTitle}">Lihat halaman penuh →</a>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${renderEntryCards(entries, folderKey, actionLabel, emptyMessage)}
+      </div>
+    </section>
+  `;
+}
+
 function renderHomePage({
   itemsPerPage,
   currentPage,
   filter,
+  sortOrder,
   games,
   tools,
   mind,
@@ -109,96 +145,193 @@ function renderHomePage({
   searchTerm = "",
 }) {
   const searchValue = escapeHtml(searchTerm);
+  const selectedFilter = filter || "all";
+  const selectedSort = sortOrder || "asc";
+
   const gamesEntries = games?.entries ?? [];
   const toolsEntries = tools?.entries ?? [];
   const mindEntries = mind?.entries ?? [];
   const randomEntries = random?.entries ?? [];
-  const gamesSection = filter === "all" || filter === "games"
-    ? `
-      <h2 class="text-2xl font-bold mb-4">Games</h2>
-      <div id="game-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-        ${renderEntryCards(gamesEntries, "game", "Play")}
+
+  const gamesTotal = games?.totalItems ?? 0;
+  const toolsTotal = tools?.totalItems ?? 0;
+  const mindTotal = mind?.totalItems ?? 0;
+  const randomTotal = random?.totalItems ?? 0;
+  const totalItems = gamesTotal + toolsTotal + mindTotal + randomTotal;
+
+  const statsData = [
+    {
+      label: "Total Koleksi",
+      value: formatNumber(totalItems),
+      caption: "Seluruh game, tools & eksperimen",
+    },
+    {
+      label: "Games",
+      value: formatNumber(gamesTotal),
+      caption: "Siap dimainkan langsung",
+    },
+    {
+      label: "Tools",
+      value: formatNumber(toolsTotal),
+      caption: "Utility harian & AI tools",
+    },
+    {
+      label: "Mind",
+      value: formatNumber(mindTotal),
+      caption: "Eksperimen ide & produktivitas",
+    },
+    {
+      label: "Random",
+      value: formatNumber(randomTotal),
+      caption: "Proyek unik & hiburan",
+    },
+  ];
+
+  const heroSection = `
+    <section class="hero">
+      <div class="hero__content">
+        <span class="hero__tag">GameListAI · Kurasi Web Tools & Games</span>
+        <h1 class="hero__title">Temukan koleksi favoritmu dalam sekali klik</h1>
+        <p class="hero__description">
+          Lebih dari ${formatNumber(totalItems)} game & tools siap pakai dengan akses kilat. Gunakan pencarian instan, simpan favorit, dan lanjutkan aktivitas terakhir tanpa harus mencari ulang.
+        </p>
+        <div class="hero__actions">
+          <button type="button" class="entry-button entry-button--primary" onclick="focusSearchInput()">
+            Cari Cepat (⌘/Ctrl + K)
+          </button>
+          <button type="button" class="entry-button entry-button--ghost" onclick="scrollToSection('favorites-section')">
+            Buka Favorit
+          </button>
+        </div>
       </div>
-    `
-    : "";
-
-  const toolsSection = filter === "all" || filter === "tools"
-    ? `
-      <h2 class="text-2xl font-bold mb-4">Tools</h2>
-      <div id="tools-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        ${renderEntryCards(toolsEntries, "tools", "Use")}
+      <div class="hero__metrics" aria-label="Statistik koleksi">
+        ${renderMetricsRow(statsData)}
       </div>
-    `
-    : "";
+    </section>
+  `;
 
-  const mindSection = filter === "all" || filter === "mind"
-    ? `
-      <h2 class="text-2xl font-bold mb-4">Mind</h2>
-      <div id="mind-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        ${renderEntryCards(mindEntries, "mind", "Open")}
-      </div>
-    `
-    : "";
-
-  const randomSection = filter === "all" || filter === "random"
-    ? `
-      <h2 class="text-2xl font-bold mb-4">Random</h2>
-      <div id="random-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        ${renderEntryCards(randomEntries, "random", "Open")}
-      </div>
-    `
-    : "";
-
-  const content = `
-    <div id="main-container" class="container mx-auto px-4 py-8">
-      <h1 class="text-4xl font-bold text-center mb-8">Game and Tool Files</h1>
-
-      <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="flex flex-wrap items-center">
-          <select id="itemsPerPage" class="bg-white border border-gray-300 rounded-md px-4 py-2 mb-2 sm:mb-0 mr-2" onchange="changeItemsPerPage()">
+  const controlPanel = `
+    <section class="control-panel">
+      <div class="control-panel__row">
+        <div class="selector-group">
+          <select id="itemsPerPage" onchange="changeItemsPerPage()">
             ${renderItemsPerPageSelect(itemsPerPage)}
           </select>
-          <select id="filterSelect" class="bg-white border border-gray-300 rounded-md px-4 py-2 mb-2 sm:mb-0" onchange="changeFilter()">
-            ${renderFilterSelect(filter)}
+          <select id="sortSelect" onchange="changeSort()">
+            ${renderSortSelect(selectedSort)}
+          </select>
+          <select id="filterSelect" onchange="changeFilter()">
+            ${renderFilterSelect(selectedFilter)}
           </select>
         </div>
-        <form class="flex flex-wrap items-center gap-2" onsubmit="submitSearch(event)">
+        <form class="search-form" onsubmit="submitSearch(event)">
           <input
             id="searchInput"
             type="search"
-            placeholder="Search games and tools"
+            placeholder="Cari game, tools, atau folder"
             value="${searchValue}"
-            class="flex-1 min-w-[200px] rounded-md border border-gray-300 px-4 py-2"
+            autocomplete="off"
+            spellcheck="false"
           />
-          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
-            Search
-          </button>
+          <button type="submit" class="entry-button entry-button--primary">Cari</button>
           ${searchTerm
-            ? '<button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded" onclick="clearSearch()">Clear</button>'
+            ? '<button type="button" class="entry-button entry-button--ghost" onclick="clearSearch()">Bersihkan</button>'
             : ""}
         </form>
-        <div class="flex items-center">
-          <button id="toggleViewBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mr-2" onclick="toggleView()">
-            Toggle View
+      </div>
+      <div class="control-panel__row control-panel__row--meta">
+        <div class="quick-filters">
+          ${renderQuickFilters(selectedFilter)}
+        </div>
+        <div class="control-panel__toggles">
+          <button type="button" id="themeToggleBtn" class="setting-button" onclick="toggleTheme()" aria-pressed="false">
+            Mode Gelap
           </button>
-          <button id="fullscreenBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded mr-2" onclick="toggleFullscreen()">
-            Fullscreen
+          <button type="button" id="densityToggleBtn" class="setting-button" onclick="toggleDensity()" aria-pressed="false">
+            Mode Kompak
           </button>
-          <button id="themeToggleBtn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded" onclick="toggleTheme()">
-            Hacker Theme
-          </button>
+          <button type="button" class="link-button" onclick="resetControls()">Reset pengaturan</button>
         </div>
       </div>
+    </section>
+  `;
 
-      <div id="folders-container">
-        ${gamesSection}
-        ${toolsSection}
-        ${mindSection}
-        ${randomSection}
+  const quickAccess = `
+    <section class="quick-access" aria-label="Akses cepat">
+      <div class="quick-panel" id="favorites-section">
+        <div class="quick-panel__header">
+          <h2 class="text-lg font-semibold text-gray-900">Favorit</h2>
+          <button type="button" class="link-button" onclick="clearFavorites()">Bersihkan favorit</button>
+        </div>
+        <p class="quick-panel__empty" id="favorites-empty">Belum ada favorit. Klik ikon ☆ pada kartu untuk menyimpan koleksi pilihanmu.</p>
+        <div id="favorites-list" class="quick-chip-list" role="list"></div>
       </div>
+      <div class="quick-panel" id="recent-section">
+        <div class="quick-panel__header">
+          <h2 class="text-lg font-semibold text-gray-900">Terakhir Dibuka</h2>
+          <button type="button" class="link-button" onclick="clearRecents()">Hapus riwayat</button>
+        </div>
+        <p class="quick-panel__empty" id="recents-empty">Belum ada riwayat. Buka salah satu koleksi untuk menambah daftar ini.</p>
+        <div id="recents-list" class="quick-chip-list" role="list"></div>
+      </div>
+    </section>
+  `;
 
-      ${renderPagination(totalPages, currentPage, itemsPerPage, filter, searchTerm)}
+  const showGames = selectedFilter === "all" || selectedFilter === "games";
+  const showTools = selectedFilter === "all" || selectedFilter === "tools";
+  const showMind = selectedFilter === "all" || selectedFilter === "mind";
+  const showRandom = selectedFilter === "all" || selectedFilter === "random";
 
+  const sections = [
+    showGames
+      ? renderCategorySection({
+          title: "Games",
+          id: "games",
+          entries: gamesEntries,
+          folderKey: "game",
+          actionLabel: "Mainkan",
+        })
+      : "",
+    showTools
+      ? renderCategorySection({
+          title: "Tools",
+          id: "tools",
+          entries: toolsEntries,
+          folderKey: "tools",
+          actionLabel: "Gunakan",
+        })
+      : "",
+    showMind
+      ? renderCategorySection({
+          title: "Mind",
+          id: "mind",
+          entries: mindEntries,
+          folderKey: "mind",
+          actionLabel: "Buka",
+        })
+      : "",
+    showRandom
+      ? renderCategorySection({
+          title: "Random",
+          id: "random",
+          entries: randomEntries,
+          folderKey: "random",
+          actionLabel: "Telusuri",
+        })
+      : "",
+  ].join("");
+
+  const content = `
+    <div id="main-container" class="mx-auto px-4 py-12 space-y-12">
+      ${heroSection}
+      <div class="control-stack">
+        ${controlPanel}
+        ${quickAccess}
+      </div>
+      <div id="folders-container">
+        ${sections}
+      </div>
+      ${renderPagination(totalPages, currentPage, itemsPerPage, selectedFilter, selectedSort, searchTerm)}
       <div id="file-container" class="mt-8 hidden">
         <div class="control-buttons">
           <button class="control-button" onclick="minimizeFile()">Minimize</button>
@@ -215,9 +348,9 @@ function renderHomePage({
 
   return layout({
     title: "GameListAI",
-    bodyClass: "bg-gray-100 min-h-screen",
+    bodyClass: "min-h-screen",
     bodyId: "body",
-    styles: hackerThemeStyles,
+    styles: `${darkThemeStyles}\n${enhancedStyles}`,
     content,
     scripts: '<script src="/scripts/app.js"></script>',
   });
