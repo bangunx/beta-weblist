@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Agen AI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 Plant Agen AI</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Konsultasi AI untuk perawatan tanaman Anda
+        </p>
+        
+        <div class="input-group">
+            <label for="plantQuestion">Pertanyaan tentang tanaman:</label>
+            <textarea id="plantQuestion" placeholder="Tanyakan tentang perawatan, penyakit, atau tips menanam tanaman..."></textarea>
+        </div>
+        
+        <button onclick="askPlantAI()">🌿 Tanya AI</button>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>Jawaban AI:</h3>
+            <div id="aiResponse"></div>
+        </div>
+    </div>
+
+    <script>
+        async function askPlantAI() {
+            const question = document.getElementById('plantQuestion').value.trim();
+            const resultDiv = document.getElementById('result');
+            const responseDiv = document.getElementById('aiResponse');
+
+            if (!question) {
+                showError('Silakan masukkan pertanyaan tentang tanaman.');
+                return;
+            }
+
+            // Show loading
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            responseDiv.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #4CAF50; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 15px; color: #666;">Sedang memproses pertanyaan...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + (process.env.GROQ_API_KEY || "YOUR_GROQ_API_KEY_HERE")
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-70b-versatile',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'Anda adalah ahli tanaman dan pertanian yang berpengalaman. Berikan saran yang praktis dan mudah dipahami tentang perawatan tanaman.'
+                            },
+                            {
+                                role: 'user',
+                                content: question
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    const answer = data.choices[0].message.content;
+                    responseDiv.innerHTML = `<p style="line-height: 1.6;">${answer}</p>`;
+                    resultDiv.className = 'result';
+                } else {
+                    throw new Error('Format respons tidak valid');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Terjadi kesalahan: ${error.message}`);
+            }
+        }
+
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            const responseDiv = document.getElementById('aiResponse');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result error';
+            responseDiv.innerHTML = `<p>${message}</p>`;
+        }
+
+        // Add CSS animation for spinner
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

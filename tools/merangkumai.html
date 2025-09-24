@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merangkum AI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Merangkum AI</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Masukkan teks yang ingin dirangkum dan dapatkan ringkasan yang akurat
+        </p>
+        
+        <div class="input-group">
+            <label for="textInput">Teks yang akan dirangkum:</label>
+            <textarea id="textInput" placeholder="Masukkan teks panjang yang ingin Anda rangkum..."></textarea>
+        </div>
+        
+        <div class="input-group">
+            <label for="maxLength">Panjang ringkasan maksimal (kata):</label>
+            <input type="number" id="maxLength" value="100" min="10" max="500">
+        </div>
+        
+        <button onclick="summarizeText()">📝 Buat Ringkasan</button>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>Hasil Ringkasan:</h3>
+            <div id="summaryText"></div>
+            <button onclick="copySummary()" style="margin-top: 10px; width: auto;">📋 Salin Ringkasan</button>
+        </div>
+    </div>
+
+    <script>
+        // API Key (dalam praktiknya, ini sebaiknya disimpan di server)
+        const API_KEY = process.env.GROQ_API_KEY || 'YOUR_GROQ_API_KEY_HERE';
+        
+        // Tips random untuk ditampilkan saat loading
+        const randomTips = [
+            "Ringkasan yang baik seharusnya mempertahankan poin utama dari konten asli.",
+            "Gunakan fitur 'Salin' untuk dengan cepat menyalin ringkasan ke clipboard.",
+            "Atur panjang ringkasan sesuai kebutuhan Anda untuk hasil yang optimal.",
+            "Ringkasan AI dapat membantu Anda memahami konten panjang dengan lebih cepat.",
+            "Pastikan teks input sudah lengkap untuk mendapatkan ringkasan yang akurat."
+        ];
+
+        async function summarizeText() {
+            const textInput = document.getElementById('textInput').value.trim();
+            const maxLength = parseInt(document.getElementById('maxLength').value);
+            const resultDiv = document.getElementById('result');
+            const summaryTextDiv = document.getElementById('summaryText');
+
+            if (!textInput) {
+                showError('Silakan masukkan teks yang ingin dirangkum.');
+                return;
+            }
+
+            if (textInput.length < 50) {
+                showError('Teks terlalu pendek. Minimal 50 karakter untuk mendapatkan ringkasan yang baik.');
+                return;
+            }
+
+            // Show loading
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            summaryTextDiv.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 15px; color: #666;">Sedang memproses ringkasan...</p>
+                    <p style="font-style: italic; color: #999; font-size: 14px;">${randomTips[Math.floor(Math.random() * randomTips.length)]}</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-70b-versatile',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `Anda adalah asisten AI yang ahli dalam merangkum teks. Buatlah ringkasan yang:
+                                1. Mempertahankan poin-poin utama
+                                2. Menggunakan bahasa yang jelas dan mudah dipahami
+                                3. Panjang maksimal ${maxLength} kata
+                                4. Tetap mempertahankan konteks dan makna asli`
+                            },
+                            {
+                                role: 'user',
+                                content: `Rangkum teks berikut dalam maksimal ${maxLength} kata:\n\n${textInput}`
+                            }
+                        ],
+                        temperature: 0.3,
+                        max_tokens: 1000
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    const summary = data.choices[0].message.content;
+                    summaryTextDiv.innerHTML = `<p style="line-height: 1.6;">${summary}</p>`;
+                    resultDiv.className = 'result';
+                } else {
+                    throw new Error('Format respons tidak valid');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Terjadi kesalahan: ${error.message}`);
+            }
+        }
+
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            const summaryTextDiv = document.getElementById('summaryText');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result error';
+            summaryTextDiv.innerHTML = `<p>${message}</p>`;
+        }
+
+        function copySummary() {
+            const summaryText = document.getElementById('summaryText').textContent;
+            navigator.clipboard.writeText(summaryText).then(() => {
+                alert('Ringkasan berhasil disalin ke clipboard!');
+            }).catch(err => {
+                console.error('Gagal menyalin: ', err);
+                alert('Gagal menyalin ke clipboard');
+            });
+        }
+
+        // Add CSS animation for spinner
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
