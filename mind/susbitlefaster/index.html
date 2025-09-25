@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>SRT Subtitle Translator</title>
+        <link rel="stylesheet" href="css/styles.css" />
+    </head>
+    <body>
+        <div class="app-shell">
+            <header class="app-header">
+                <div class="app-header__content">
+                    <h1 class="app-title">SRT Subtitle Translator</h1>
+                    <p class="app-subtitle">
+                        Translate subtitle files faster with batched translation and
+                        drag-and-drop uploads.
+                    </p>
+                </div>
+            </header>
+
+            <main class="app-main">
+                <section class="panel">
+                    <h2 class="panel__title">Source Subtitle</h2>
+                    <div class="upload-zone" id="dropZone">
+                        <input
+                            type="file"
+                            id="fileInput"
+                            accept=".srt"
+                            aria-label="Upload SRT subtitle file"
+                        />
+                        <div class="upload-zone__inner">
+                            <div class="upload-zone__icon" aria-hidden="true">⬆︎</div>
+                            <p class="upload-zone__headline">Drag &amp; drop your .srt file</p>
+                            <p class="upload-zone__subline">or</p>
+                            <button type="button" class="btn btn--secondary" id="browseBtn">
+                                Browse files
+                            </button>
+                            <p class="upload-zone__filename" id="fileName">
+                                No file selected yet
+                            </p>
+                        </div>
+                    </div>
+                    <label class="sr-only" for="inputText">Subtitle source text</label>
+                    <textarea
+                        id="inputText"
+                        placeholder="Paste your SRT subtitle content here or upload a file"
+                    ></textarea>
+                </section>
+
+                <section class="panel">
+                    <h2 class="panel__title">Translation Settings</h2>
+
+                    <div class="form-section">
+                        <span class="form-section__label">Speed mode</span>
+                        <div class="choice-grid" id="speedOptions">
+                            <label class="choice">
+                                <input type="radio" name="speed" value="normal" />
+                                <span>Normal</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="speed" value="fast" />
+                                <span>Fast</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="speed" value="super-turbo" checked />
+                                <span>Super Turbo</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="speed" value="goat" />
+                                <span>GOAT</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <span class="form-section__label">Translation service</span>
+                        <div class="choice-grid" id="serviceOptions">
+                            <label class="choice">
+                                <input
+                                    type="radio"
+                                    name="service"
+                                    value="google"
+                                    checked
+                                />
+                                <span>Google Translate</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="service" value="deepl" />
+                                <span>DeepL</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="api-key" id="apiKeyControls" hidden>
+                        <label for="deeplApiKey">DeepL API key</label>
+                        <div class="api-key__controls">
+                            <input
+                                type="password"
+                                id="deeplApiKey"
+                                placeholder="Enter your DeepL API key"
+                            />
+                            <button type="button" class="btn" id="toggleApiKeyBtn">
+                                Show
+                            </button>
+                            <button type="button" class="btn btn--secondary" id="saveApiKeyBtn">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="targetLang" class="form-row__label">Target language</label>
+                        <select id="targetLang" class="select">
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="id">Indonesian</option>
+                        </select>
+                    </div>
+
+                    <div class="action-row">
+                        <button type="button" class="btn btn--primary" id="translateBtn">
+                            Translate
+                        </button>
+                        <button type="button" class="btn btn--success" id="downloadBtn" disabled>
+                            Download translated subtitle
+                        </button>
+                    </div>
+
+                    <div class="progress" id="progressBar" aria-hidden="true">
+                        <div class="progress__bar" id="progressBarInner">0%</div>
+                    </div>
+
+                    <label class="sr-only" for="outputText">Translated subtitle text</label>
+                    <textarea
+                        id="outputText"
+                        readonly
+                        placeholder="Translated subtitles will appear here"
+                    ></textarea>
+                </section>
+            </main>
+        </div>
+
+        <script src="js/app.js" type="module"></script>
+    </body>
+</html>
