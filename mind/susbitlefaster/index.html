@@ -3,17 +3,17 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>SRT Subtitle Translator</title>
+        <title>Subtitle Translator</title>
         <link rel="stylesheet" href="css/styles.css" />
     </head>
     <body>
         <div class="app-shell">
             <header class="app-header">
                 <div class="app-header__content">
-                    <h1 class="app-title">SRT Subtitle Translator</h1>
+                    <h1 class="app-title">Subtitle Translator</h1>
                     <p class="app-subtitle">
-                        Translate subtitle files faster with batched translation and
-                        drag-and-drop uploads.
+                        Translate subtitle files faster with batching, drag-and-drop uploads,
+                        and support for multiple formats (.srt, .sub, .sbv, .ass, .vtt, .stl).
                     </p>
                 </div>
             </header>
@@ -25,12 +25,12 @@
                         <input
                             type="file"
                             id="fileInput"
-                            accept=".srt"
-                            aria-label="Upload SRT subtitle file"
+                            accept=".srt,.sub,.sbv,.ass,.vtt,.stl"
+                            aria-label="Upload subtitle file (.srt, .sub, .sbv, .ass, .vtt, .stl)"
                         />
                         <div class="upload-zone__inner">
                             <div class="upload-zone__icon" aria-hidden="true">⬆︎</div>
-                            <p class="upload-zone__headline">Drag &amp; drop your .srt file</p>
+                            <p class="upload-zone__headline">Drag &amp; drop .srt, .sub, .sbv, .ass, .vtt, .stl</p>
                             <p class="upload-zone__subline">or</p>
                             <button type="button" class="btn btn--secondary" id="browseBtn">
                                 Browse files
@@ -43,7 +43,7 @@
                     <label class="sr-only" for="inputText">Subtitle source text</label>
                     <textarea
                         id="inputText"
-                        placeholder="Paste your SRT subtitle content here or upload a file"
+                        placeholder="Paste subtitle content (.srt, .sub, .sbv, .ass, .vtt, .stl) or upload a file"
                     ></textarea>
                 </section>
 

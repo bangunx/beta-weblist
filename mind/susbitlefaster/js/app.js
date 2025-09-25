@@ -1,6 +1,7 @@
 const state = {
     originalFileName: "",
     isTranslating: false,
+    activeFormat: "srt",
 };
 
 const els = {
@@ -20,6 +21,20 @@ const els = {
     saveApiKeyBtn: document.getElementById("saveApiKeyBtn"),
 };
 
+const formatHandlers = createFormatHandlers();
+const formatById = new Map(formatHandlers.map((handler) => [handler.id, handler]));
+const formatByExtension = new Map();
+formatHandlers.forEach((handler) => {
+    handler.extensions.forEach((ext) => {
+        formatByExtension.set(ext.toLowerCase(), handler);
+    });
+});
+const supportedExtensionsOrder = [".srt", ".sub", ".sbv", ".ass", ".vtt", ".stl"];
+const supportedExtensions = supportedExtensionsOrder.filter((ext) => formatByExtension.has(ext)).concat(
+    Array.from(formatByExtension.keys()).filter((ext) => !supportedExtensionsOrder.includes(ext)),
+);
+const supportedExtensionsText = supportedExtensions.join(", ");
+
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
 } else {
@@ -35,6 +50,7 @@ function init() {
     loadApiKey();
     setDownloadReady(false);
     hideProgress();
+    updateFileNameDisplay(state.originalFileName, getHandlerById(state.activeFormat));
 }
 
 function wireServiceControls() {
@@ -102,6 +118,9 @@ function wireFileControls() {
     });
 
     els.inputText.addEventListener("input", () => {
+        if (!state.originalFileName && els.fileName) {
+            els.fileName.textContent = "Pasted text";
+        }
         setDownloadReady(false);
     });
 }
@@ -166,13 +185,16 @@ function resetApiKeyField() {
 }
 
 function processFile(file) {
-    if (!file.name.toLowerCase().endsWith(".srt")) {
-        alert("Please upload an .srt subtitle file.");
+    const extension = getFileExtension(file.name);
+    const handler = extension ? getHandlerByExtension(extension) : null;
+    if (!handler) {
+        alert(`Unsupported subtitle format. Supported formats: ${supportedExtensionsText}`);
         return;
     }
 
+    state.activeFormat = handler.id;
     state.originalFileName = file.name;
-    els.fileName.textContent = file.name;
+    updateFileNameDisplay(file.name, handler);
 
     readSubtitleFile(file)
         .then((content) => {
@@ -216,8 +238,9 @@ async function translateText() {
         return;
     }
 
-    const rawInput = els.inputText.value.trim();
-    if (!rawInput) {
+    const rawInput = els.inputText.value;
+    const trimmedInput = rawInput.trim();
+    if (!trimmedInput) {
         alert("Please paste subtitles or upload a file before translating.");
         return;
     }
@@ -233,27 +256,37 @@ async function translateText() {
         return;
     }
 
-    const subtitles = rawInput
-        .split(/\n\s*\n/)
-        .map((block) => block.trim())
-        .filter(Boolean);
-
-    if (subtitles.length === 0) {
-        alert("No subtitle entries were detected. Please check the format.");
+    const resolved = resolveFormat(trimmedInput);
+    if (!resolved) {
+        alert("The subtitle text could not be parsed. Please confirm the format is supported.");
         return;
     }
+
+    const { handler, parsed } = resolved;
+    const entries = parsed.entries || [];
+    const totalEntries = entries.length;
+
+    const queue = entries
+        .map((entry, index) => ({ entry, index }))
+        .filter(({ entry }) => entry.text && entry.text.trim());
 
     state.isTranslating = true;
     setDownloadReady(false);
     els.outputText.value = "";
     els.translateBtn.disabled = true;
     els.translateBtn.textContent = "Translating…";
-    showProgress();
-    updateProgress(0, subtitles.length);
 
-    const results = [];
+    const totalTranslatable = queue.length;
+    if (totalTranslatable > 0) {
+        showProgress();
+        updateProgress(0, totalTranslatable);
+    } else {
+        hideProgress();
+    }
+
+    const translations = new Array(totalEntries).fill(undefined);
     const speedConfig = {
-        goat: subtitles.length,
+        goat: totalTranslatable,
         "super-turbo": 20,
         fast: 10,
         normal: 1,
@@ -264,22 +297,33 @@ async function translateText() {
         fast: 10,
         normal: 100,
     };
-
     const batchSize = speedConfig[speedMode] || 1;
     const delay = delayConfig[speedMode] ?? 50;
 
+    let translatedCount = 0;
+
     try {
-        for (let index = 0; index < subtitles.length; index += batchSize) {
-            const batch = subtitles.slice(index, index + batchSize);
-            const translatedBatch = await translateBatch(
-                batch,
-                targetLang,
-                service,
-                deeplApiKey,
+        for (let i = 0; i < queue.length; i += batchSize) {
+            const batchItems = queue.slice(i, i + batchSize);
+            const translatedBatch = await Promise.all(
+                batchItems.map(({ entry }) =>
+                    translateSegment(entry.text, targetLang, service, deeplApiKey).catch((error) => {
+                        console.error("Translation error", error);
+                        return entry.text;
+                    }),
+                ),
             );
-            results.push(...translatedBatch);
-            updateProgress(results.length, subtitles.length);
-            if (delay > 0 && results.length < subtitles.length) {
+
+            batchItems.forEach(({ index }, idx) => {
+                translations[index] = translatedBatch[idx];
+            });
+
+            translatedCount += batchItems.length;
+            if (totalTranslatable > 0) {
+                updateProgress(translatedCount, totalTranslatable);
+            }
+
+            if (delay > 0 && translatedCount < totalTranslatable) {
                 await pause(delay);
             }
         }
@@ -287,45 +331,55 @@ async function translateText() {
         console.error("Translation error", error);
         alert("Something went wrong during translation. Please try again.");
     } finally {
-        els.outputText.value = results.join("\n\n");
         hideProgress();
+        const finalText = parsed.build(translations);
+        els.outputText.value = finalText;
         els.translateBtn.disabled = false;
         els.translateBtn.textContent = "Translate";
         state.isTranslating = false;
-        if (results.length) {
+        if (finalText.trim()) {
             setDownloadReady(true);
         }
     }
 }
 
-async function translateBatch(batch, targetLang, service, deeplApiKey) {
-    return Promise.all(
-        batch.map(async (subtitle) => {
-            const lines = subtitle.split("\n");
-            const textToTranslate = lines.slice(2).join(" ").trim();
-            if (!textToTranslate) {
-                return subtitle;
+function resolveFormat(inputText) {
+    const normalized = normalizeLineEndings(inputText);
+    const attempts = [];
+    const activeHandler = getHandlerById(state.activeFormat);
+    if (activeHandler) {
+        attempts.push(activeHandler);
+    }
+
+    const detected = detectFormatFromText(normalized);
+    if (detected && !attempts.includes(detected)) {
+        attempts.push(detected);
+    }
+
+    const defaultHandler = getHandlerById("srt");
+    if (defaultHandler && !attempts.includes(defaultHandler)) {
+        attempts.push(defaultHandler);
+    }
+
+    for (const handler of attempts) {
+        try {
+            const parsed = handler.parse(normalized);
+            if (!parsed) {
+                continue;
             }
-
-            try {
-                const translatedText = await translateSegment(
-                    textToTranslate,
-                    targetLang,
-                    service,
-                    deeplApiKey,
-                );
-
-                if (translatedText) {
-                    lines.splice(2, lines.length - 2, translatedText);
-                    return lines.join("\n");
-                }
-            } catch (error) {
-                console.error("Failed to translate subtitle", error);
+            state.activeFormat = handler.id;
+            if (!state.originalFileName) {
+                updateFileNameDisplay("", handler, { reason: "pasted" });
+            } else {
+                updateFileNameDisplay(state.originalFileName, handler);
             }
+            return { handler, parsed };
+        } catch (error) {
+            console.error(`Unable to parse subtitle as ${handler.id}`, error);
+        }
+    }
 
-            return subtitle;
-        }),
-    );
+    return null;
 }
 
 async function translateSegment(text, targetLang, service, deeplApiKey) {
@@ -370,7 +424,7 @@ function hideProgress() {
 }
 
 function updateProgress(completed, total) {
-    const percentage = Math.round((completed / total) * 100) || 0;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     els.progressBarInner.style.width = `${percentage}%`;
     els.progressBarInner.textContent = `${percentage}%`;
 }
@@ -387,10 +441,12 @@ function downloadSubtitle() {
     }
 
     const targetLang = document.getElementById("targetLang").value;
+    const handler = getHandlerById(state.activeFormat) || getHandlerById("srt");
     const baseName = state.originalFileName
-        ? state.originalFileName.replace(/\.srt$/i, "")
+        ? stripSupportedExtension(state.originalFileName)
         : "translated_subtitle";
-    const downloadFileName = `${baseName}.${targetLang}.srt`;
+    const extension = (handler?.extensions?.[0] || ".srt").replace(/^\./, "");
+    const downloadFileName = `${baseName}.${targetLang}.${extension}`;
 
     const blob = new Blob([translatedText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -401,4 +457,490 @@ function downloadSubtitle() {
     anchor.click();
     URL.revokeObjectURL(url);
     anchor.remove();
+}
+
+function updateFileNameDisplay(fileName, handler, options = {}) {
+    if (!els.fileName) {
+        return;
+    }
+
+    if (fileName) {
+        const label = handler ? `${fileName} • ${handler.label}` : fileName;
+        els.fileName.textContent = label;
+        return;
+    }
+
+    if (options.reason === "pasted" && handler) {
+        els.fileName.textContent = `Pasted text • ${handler.label}`;
+    } else {
+        els.fileName.textContent = "No file selected yet";
+    }
+}
+
+function getHandlerById(id) {
+    return id ? formatById.get(id) : null;
+}
+
+function getHandlerByExtension(extension) {
+    if (!extension) {
+        return null;
+    }
+    return formatByExtension.get(extension.toLowerCase()) || null;
+}
+
+function getFileExtension(name) {
+    const match = name?.toLowerCase().match(/\.[^.]+$/);
+    return match ? match[0] : "";
+}
+
+function stripSupportedExtension(name) {
+    const extension = getFileExtension(name);
+    if (extension && supportedExtensions.includes(extension)) {
+        return name.slice(0, -extension.length);
+    }
+    return name;
+}
+
+function detectFormatFromText(text) {
+    for (const handler of formatHandlers) {
+        try {
+            if (handler.detect && handler.detect(text)) {
+                return handler;
+            }
+        } catch (error) {
+            console.error(`Detection failed for format ${handler.id}`, error);
+        }
+    }
+    return null;
+}
+
+function normalizeLineEndings(text) {
+    return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function chooseTranslation(translated, fallback) {
+    if (typeof translated === "string" && translated.trim()) {
+        return translated;
+    }
+    return fallback;
+}
+
+function createFormatHandlers() {
+    return [
+        createVttHandler(),
+        createAssHandler(),
+        createSubHandler(),
+        createSbvHandler(),
+        createStlHandler(),
+        createSrtHandler(),
+    ];
+}
+
+function createSrtHandler() {
+    return {
+        id: "srt",
+        label: "SRT",
+        extensions: [".srt"],
+        detect: (text) => /-->/.test(text) && /^\d+\s*\n.*-->/.test(text),
+        parse(content) {
+            const normalized = normalizeLineEndings(content).trim();
+            if (!normalized) {
+                return { entries: [], build: () => "" };
+            }
+            const blocks = normalized.split(/\n\s*\n/);
+            const entries = blocks.map((block) => {
+                const lines = block.split("\n");
+                const timeIndex = lines.findIndex((line) => line.includes("-->"));
+                if (timeIndex === -1) {
+                    return {
+                        text: "",
+                        compose: () => block,
+                    };
+                }
+                const prefix = lines.slice(0, timeIndex + 1);
+                const textLines = lines.slice(timeIndex + 1);
+                const joined = textLines.join("\n");
+                return {
+                    text: joined,
+                    compose(translated) {
+                        if (!joined.trim()) {
+                            return block;
+                        }
+                        const safe = chooseTranslation(translated, joined);
+                        const bodyLines = safe.split(/\r?\n/);
+                        return [...prefix, ...bodyLines].join("\n");
+                    },
+                };
+            });
+            return {
+                entries,
+                build(translations = []) {
+                    return entries
+                        .map((entry, index) => entry.compose(translations[index]))
+                        .join("\n\n");
+                },
+            };
+        },
+    };
+}
+
+function createVttHandler() {
+    return {
+        id: "vtt",
+        label: "WebVTT",
+        extensions: [".vtt"],
+        detect: (text) => /^WEBVTT/m.test(text),
+        parse(content) {
+            const normalized = normalizeLineEndings(content);
+            const lines = normalized.split("\n");
+            let index = 0;
+            const headerLines = [];
+
+            if (lines[0]?.trim().toUpperCase().startsWith("WEBVTT")) {
+                while (index < lines.length && lines[index].trim() !== "") {
+                    headerLines.push(lines[index]);
+                    index++;
+                }
+                while (index < lines.length && lines[index].trim() === "") {
+                    index++;
+                }
+            }
+
+            const rest = lines.slice(index).join("\n").trim();
+            if (!rest) {
+                return {
+                    entries: [],
+                    build: () => headerLines.join("\n"),
+                };
+            }
+
+            const blocks = rest.split(/\n\s*\n/);
+            const entries = blocks.map((block) => {
+                const blockLines = block.split("\n");
+                const firstLine = blockLines[0]?.trim().toUpperCase();
+                if (firstLine?.startsWith("NOTE")) {
+                    return {
+                        text: "",
+                        compose: () => block,
+                    };
+                }
+                const timeIndex = blockLines.findIndex((line) => line.includes("-->"));
+                if (timeIndex === -1) {
+                    return {
+                        text: "",
+                        compose: () => block,
+                    };
+                }
+                const prefix = blockLines.slice(0, timeIndex + 1);
+                const textLines = blockLines.slice(timeIndex + 1);
+                const joined = textLines.join("\n");
+                return {
+                    text: joined,
+                    compose(translated) {
+                        if (!joined.trim()) {
+                            return block;
+                        }
+                        const safe = chooseTranslation(translated, joined);
+                        const bodyLines = safe.split(/\r?\n/);
+                        return [...prefix, ...bodyLines].join("\n");
+                    },
+                };
+            });
+
+            return {
+                entries,
+                build(translations = []) {
+                    const body = entries
+                        .map((entry, index) => entry.compose(translations[index]))
+                        .join("\n\n");
+                    if (!headerLines.length) {
+                        return body;
+                    }
+                    const header = headerLines.join("\n");
+                    return [header, body].filter(Boolean).join("\n\n");
+                },
+            };
+        },
+    };
+}
+
+function createSbvHandler() {
+    return {
+        id: "sbv",
+        label: "SBV",
+        extensions: [".sbv"],
+        detect: (text) => /\d+:\d{2}:\d{2}\.\d{3},\d+:\d{2}:\d{2}\.\d{3}/.test(text),
+        parse(content) {
+            const normalized = normalizeLineEndings(content).trim();
+            if (!normalized) {
+                return { entries: [], build: () => "" };
+            }
+            const blocks = normalized.split(/\n\s*\n/);
+            const entries = blocks.map((block) => {
+                const lines = block.split("\n");
+                if (!lines.length) {
+                    return { text: "", compose: () => block };
+                }
+                const timestamp = lines[0];
+                const textLines = lines.slice(1);
+                const joined = textLines.join("\n");
+                const isTimestamp = /\d+:\d{2}:\d{2}\.\d{3},\d+:\d{2}:\d{2}\.\d{3}/.test(timestamp);
+                if (!isTimestamp) {
+                    return { text: "", compose: () => block };
+                }
+                return {
+                    text: joined,
+                    compose(translated) {
+                        if (!joined.trim()) {
+                            return block;
+                        }
+                        const safe = chooseTranslation(translated, joined);
+                        const bodyLines = safe.split(/\r?\n/);
+                        return [timestamp, ...bodyLines].join("\n");
+                    },
+                };
+            });
+            return {
+                entries,
+                build(translations = []) {
+                    return entries
+                        .map((entry, index) => entry.compose(translations[index]))
+                        .join("\n\n");
+                },
+            };
+        },
+    };
+}
+
+function createSubHandler() {
+    const linePattern = /^\s*\{(\d+)\}\{(\d+)\}(.*)$/;
+    return {
+        id: "sub",
+        label: "MicroDVD SUB",
+        extensions: [".sub"],
+        detect: (text) => /\{\d+\}\{\d+\}/.test(text),
+        parse(content) {
+            const normalized = normalizeLineEndings(content);
+            const lines = normalized.split("\n");
+            const entries = [];
+            lines.forEach((line, lineIndex) => {
+                const match = line.match(linePattern);
+                if (!match) {
+                    entries.push({
+                        text: "",
+                        compose: () => line,
+                        lineIndex,
+                    });
+                    return;
+                }
+                const header = `{${match[1]}}{${match[2]}}`;
+                const body = match[3];
+                const text = body.replace(/\|/g, "\n");
+                entries.push({
+                    text,
+                    compose(translated) {
+                        if (!text.trim()) {
+                            return line;
+                        }
+                        const safe = chooseTranslation(translated, text);
+                        const formatted = safe.replace(/\n/g, "|");
+                        return `${header}${formatted}`;
+                    },
+                    lineIndex,
+                });
+            });
+            return {
+                entries,
+                build(translations = []) {
+                    const outputLines = lines.slice();
+                    entries.forEach((entry, index) => {
+                        if (typeof entry.lineIndex !== "number") {
+                            return;
+                        }
+                        const translated = translations[index];
+                        const updated = entry.compose(translated);
+                        outputLines[entry.lineIndex] = updated;
+                    });
+                    return outputLines.join("\n");
+                },
+            };
+        },
+    };
+}
+
+function createAssHandler() {
+    return {
+        id: "ass",
+        label: "ASS",
+        extensions: [".ass"],
+        detect: (text) => /\[Script Info\]/i.test(text) || /^Dialogue:/m.test(text),
+        parse(content) {
+            const normalized = normalizeLineEndings(content);
+            const lines = normalized.split("\n");
+            const entries = [];
+
+            lines.forEach((line, lineIndex) => {
+                if (!line.startsWith("Dialogue:")) {
+                    entries.push({
+                        text: "",
+                        compose: () => line,
+                        lineIndex,
+                    });
+                    return;
+                }
+
+                const afterKeyword = line.slice("Dialogue:".length);
+                const parsed = splitAssDialogue(afterKeyword);
+                if (!parsed) {
+                    entries.push({
+                        text: "",
+                        compose: () => line,
+                        lineIndex,
+                    });
+                    return;
+                }
+
+                const { fields, text } = parsed;
+                const prepared = prepareAssText(text);
+
+                entries.push({
+                    text: prepared.sanitized,
+                    compose(translated) {
+                        if (!prepared.sanitized.trim()) {
+                            return line;
+                        }
+                        const safe = chooseTranslation(translated, prepared.sanitized);
+                        const restored = restoreAssText(safe, prepared);
+                        return `Dialogue:${fields.join(",")},${restored}`;
+                    },
+                    lineIndex,
+                });
+            });
+
+            return {
+                entries,
+                build(translations = []) {
+                    const outputLines = lines.slice();
+                    entries.forEach((entry, index) => {
+                        if (typeof entry.lineIndex !== "number") {
+                            return;
+                        }
+                        const translated = translations[index];
+                        const updated = entry.compose(translated);
+                        outputLines[entry.lineIndex] = updated;
+                    });
+                    return outputLines.join("\n");
+                },
+            };
+        },
+    };
+}
+
+function splitAssDialogue(afterKeyword) {
+    let remaining = afterKeyword.trimStart();
+    const fields = [];
+    for (let i = 0; i < 9; i += 1) {
+        const commaIndex = remaining.indexOf(",");
+        if (commaIndex === -1) {
+            return null;
+        }
+        const field = remaining.slice(0, commaIndex);
+        fields.push(field);
+        remaining = remaining.slice(commaIndex + 1);
+    }
+    return { fields, text: remaining };
+}
+
+function prepareAssText(text) {
+    const tags = [];
+    const spacingTokens = [];
+    let sanitized = text.replace(/\{[^}]*\}/g, (match) => {
+        const placeholder = `__ASS_TAG_${tags.length}__`;
+        tags.push(match);
+        return placeholder;
+    });
+
+    sanitized = sanitized.replace(/\\h/g, () => {
+        const placeholder = `__ASS_SPACE_${spacingTokens.length}__`;
+        spacingTokens.push("\\h");
+        return placeholder;
+    });
+
+    sanitized = sanitized.replace(/\\N|\\n/g, "\n");
+
+    return { sanitized, tags, spacingTokens };
+}
+
+function restoreAssText(translated, prepared) {
+    const { tags, spacingTokens } = prepared;
+    let restored = translated;
+
+    spacingTokens.forEach((token, index) => {
+        const placeholder = new RegExp(`__ASS_SPACE_${index}__`, "g");
+        restored = restored.replace(placeholder, token);
+    });
+
+    restored = restored.replace(/\n/g, "\\N");
+
+    tags.forEach((tag, index) => {
+        const placeholder = new RegExp(`__ASS_TAG_${index}__`, "g");
+        restored = restored.replace(placeholder, tag);
+    });
+
+    return restored;
+}
+
+function createStlHandler() {
+    const linePattern = /^(\s*)(\d{2}:\d{2}:\d{2}[:;,]\d{2})(\s*[,;]\s*)(\d{2}:\d{2}:\d{2}[:;,]\d{2})(\s*[,;]\s*)(.*)$/;
+    return {
+        id: "stl",
+        label: "STL",
+        extensions: [".stl"],
+        detect: (text) => linePattern.test(text),
+        parse(content) {
+            const normalized = normalizeLineEndings(content);
+            const lines = normalized.split("\n");
+            const entries = [];
+            lines.forEach((line, lineIndex) => {
+                const match = line.match(linePattern);
+                if (!match) {
+                    entries.push({
+                        text: "",
+                        compose: () => line,
+                        lineIndex,
+                    });
+                    return;
+                }
+                const [leading, start, startSeparator, end, endSeparator, body] = match.slice(1);
+                const text = body.replace(/\|/g, "\n");
+                entries.push({
+                    text,
+                    compose(translated) {
+                        if (!text.trim()) {
+                            return line;
+                        }
+                        const safe = chooseTranslation(translated, text);
+                        const formatted = safe.replace(/\n/g, "|");
+                        return `${leading}${start}${startSeparator}${end}${endSeparator}${formatted}`;
+                    },
+                    lineIndex,
+                });
+            });
+            return {
+                entries,
+                build(translations = []) {
+                    const outputLines = lines.slice();
+                    entries.forEach((entry, index) => {
+                        if (typeof entry.lineIndex !== "number") {
+                            return;
+                        }
+                        const translated = translations[index];
+                        const updated = entry.compose(translated);
+                        outputLines[entry.lineIndex] = updated;
+                    });
+                    return outputLines.join("\n");
+                },
+            };
+        },
+    };
 }
