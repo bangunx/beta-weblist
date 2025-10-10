@@ -43,112 +43,115 @@
         <p>Mohon tunggu sebentar.</p>
     </div>
 
-    <header class="header shadow-2xl ring-1 ring-white/40 animate__animated animate__fadeInDown" role="banner">
-        <div class="header-top">
-            <div class="header-title">
-                <span class="header-icon" aria-hidden="true">
-                    <i class="fa-solid fa-tower-broadcast"></i>
-                </span>
-                <div>
-                    <h1>Peta CCTV Kota Malang</h1>
-                    <p>Gunakan pencarian atau filter untuk menemukan kamera CCTV yang Anda butuhkan</p>
+    <div class="panel-cluster" id="panel-cluster" aria-label="Panel kontrol peta">
+        <div class="mobile-panel-handle" aria-hidden="true"></div>
+
+        <header class="header shadow-2xl ring-1 ring-white/40 animate__animated animate__fadeInDown" role="banner">
+            <div class="header-top">
+                <div class="header-title">
+                    <span class="header-icon" aria-hidden="true">
+                        <i class="fa-solid fa-tower-broadcast"></i>
+                    </span>
+                    <div>
+                        <h1>Peta CCTV Kota Malang</h1>
+                        <p>Gunakan pencarian atau filter untuk menemukan kamera CCTV yang Anda butuhkan</p>
+                    </div>
+                </div>
+                <div class="header-actions" role="group" aria-label="Aksi cepat">
+                    <button type="button" class="header-action" data-quick-action="reset-view">
+                        <i class="fa-solid fa-shuffle"></i>
+                        <span>Atur ulang tampilan</span>
+                    </button>
+                    <button type="button" class="header-action" data-quick-action="focus-city">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        <span>Fokus pusat kota</span>
+                    </button>
+                    <button type="button" class="header-action" data-quick-action="refresh-data">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Segarkan data</span>
+                    </button>
+                    <button type="button" class="header-action header-action--accent" data-toggle-panel="#info-panel">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>Panduan cepat</span>
+                    </button>
                 </div>
             </div>
-            <div class="header-actions" role="group" aria-label="Aksi cepat">
-                <button type="button" class="header-action" data-quick-action="reset-view">
-                    <i class="fa-solid fa-shuffle"></i>
-                    <span>Atur ulang tampilan</span>
-                </button>
-                <button type="button" class="header-action" data-quick-action="focus-city">
-                    <i class="fa-solid fa-location-crosshairs"></i>
-                    <span>Fokus pusat kota</span>
-                </button>
-                <button type="button" class="header-action" data-quick-action="refresh-data">
-                    <i class="fa-solid fa-arrows-rotate"></i>
-                    <span>Segarkan data</span>
-                </button>
-                <button type="button" class="header-action header-action--accent" data-toggle-panel="#info-panel">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <span>Panduan cepat</span>
+            <div class="header-meta" role="list">
+                <span class="header-badge" role="listitem">
+                    <i class="fa-solid fa-video"></i>
+                    <span id="badge-total-cctv">0 Kamera aktif</span>
+                </span>
+                <span class="header-badge" role="listitem">
+                    <i class="fa-solid fa-wifi"></i>
+                    <span id="badge-online-percentage">0% Online</span>
+                </span>
+                <span class="header-badge" role="listitem">
+                    <i class="fa-solid fa-landmark-flag"></i>
+                    <span id="badge-district-total">0 Kecamatan</span>
+                </span>
+            </div>
+        </header>
+
+        <section id="info-panel" class="info-panel" role="region" aria-label="Panduan penggunaan" aria-hidden="true">
+            <div class="info-panel__header">
+                <div class="info-panel__title">
+                    <i class="fa-solid fa-graduation-cap" aria-hidden="true"></i>
+                    <h2>Panduan cepat penggunaan peta</h2>
+                </div>
+                <button type="button" class="info-panel__close" aria-label="Tutup panduan" data-toggle-panel="#info-panel">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-        </div>
-        <div class="header-meta" role="list">
-            <span class="header-badge" role="listitem">
-                <i class="fa-solid fa-video"></i>
-                <span id="badge-total-cctv">0 Kamera aktif</span>
-            </span>
-            <span class="header-badge" role="listitem">
-                <i class="fa-solid fa-wifi"></i>
-                <span id="badge-online-percentage">0% Online</span>
-            </span>
-            <span class="header-badge" role="listitem">
-                <i class="fa-solid fa-landmark-flag"></i>
-                <span id="badge-district-total">0 Kecamatan</span>
-            </span>
-        </div>
-    </header>
-
-    <section id="info-panel" class="info-panel" role="region" aria-label="Panduan penggunaan" aria-hidden="true">
-        <div class="info-panel__header">
-            <div class="info-panel__title">
-                <i class="fa-solid fa-graduation-cap" aria-hidden="true"></i>
-                <h2>Panduan cepat penggunaan peta</h2>
+            <div class="info-panel__content">
+                <ul>
+                    <li><i class="fa-solid fa-magnifying-glass-location"></i> Gunakan pencarian pintar untuk menemukan kamera berdasarkan nama, lokasi, atau kecamatan.</li>
+                    <li><i class="fa-solid fa-filter-circle-xmark"></i> Kombinasikan filter untuk menampilkan kamera sesuai kebutuhan, misalnya hanya kamera online.</li>
+                    <li><i class="fa-solid fa-map-location-dot"></i> Klik pada marker di peta untuk melihat detail lengkap, termasuk tautan live streaming jika tersedia.</li>
+                    <li><i class="fa-solid fa-circle-radiation"></i> Gunakan toolbar peta di kanan bawah untuk memperbesar, memperkecil, atau menandai lokasi Anda.</li>
+                </ul>
             </div>
-            <button type="button" class="info-panel__close" aria-label="Tutup panduan" data-toggle-panel="#info-panel">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        <div class="info-panel__content">
-            <ul>
-                <li><i class="fa-solid fa-magnifying-glass-location"></i> Gunakan pencarian pintar untuk menemukan kamera berdasarkan nama, lokasi, atau kecamatan.</li>
-                <li><i class="fa-solid fa-filter-circle-xmark"></i> Kombinasikan filter untuk menampilkan kamera sesuai kebutuhan, misalnya hanya kamera online.</li>
-                <li><i class="fa-solid fa-map-location-dot"></i> Klik pada marker di peta untuk melihat detail lengkap, termasuk tautan live streaming jika tersedia.</li>
-                <li><i class="fa-solid fa-circle-radiation"></i> Gunakan toolbar peta di kanan bawah untuk memperbesar, memperkecil, atau menandai lokasi Anda.</li>
-            </ul>
-        </div>
-    </section>
+        </section>
 
-    <aside class="controls space-y-3 text-sm sm:text-base animate__animated animate__fadeInLeft" aria-label="Kontrol peta CCTV">
-        <div class="controls-header">
-            <span class="controls-title">
-                <i class="fa-solid fa-sliders"></i>
-                Filter & pencarian
-            </span>
-            <button type="button" class="controls-help" data-toggle-panel="#info-panel" aria-label="Lihat panduan">
-                <i class="fa-solid fa-circle-question"></i>
-            </button>
-        </div>
-        <div class="search-box">
-            <input type="search"
-                   class="search-input"
-                   placeholder="Cari nama kamera, lokasi, atau kecamatan..."
-                   aria-label="Cari CCTV"
-                   autocomplete="off">
-            <div class="search-results" role="listbox" aria-label="Hasil pencarian CCTV"></div>
-        </div>
+        <aside class="controls space-y-3 text-sm sm:text-base animate__animated animate__fadeInLeft" aria-label="Kontrol peta CCTV">
+            <div class="controls-header">
+                <span class="controls-title">
+                    <i class="fa-solid fa-sliders"></i>
+                    Filter & pencarian
+                </span>
+                <button type="button" class="controls-help" data-toggle-panel="#info-panel" aria-label="Lihat panduan">
+                    <i class="fa-solid fa-circle-question"></i>
+                </button>
+            </div>
+            <div class="search-box">
+                <input type="search"
+                       class="search-input"
+                       placeholder="Cari nama kamera, lokasi, atau kecamatan..."
+                       aria-label="Cari CCTV"
+                       autocomplete="off">
+                <div class="search-results" role="listbox" aria-label="Hasil pencarian CCTV"></div>
+            </div>
 
-        <div class="filter-group" role="group" aria-label="Filter status kamera">
-            <button type="button" class="filter-btn btn-all active" data-filter="all">📹 Semua</button>
-            <button type="button" class="filter-btn btn-online" data-filter="online">🟢 Online</button>
-            <button type="button" class="filter-btn btn-offline" data-filter="offline">🔴 Offline</button>
-            <button type="button" class="filter-btn btn-intersection" data-filter="intersection">🚦 Persimpangan</button>
-            <button type="button" class="filter-btn btn-street" data-filter="street">🛣️ Jalan</button>
-        </div>
+            <div class="filter-group" role="group" aria-label="Filter status kamera">
+                <button type="button" class="filter-btn btn-all active" data-filter="all">📹 Semua</button>
+                <button type="button" class="filter-btn btn-online" data-filter="online">🟢 Online</button>
+                <button type="button" class="filter-btn btn-offline" data-filter="offline">🔴 Offline</button>
+                <button type="button" class="filter-btn btn-intersection" data-filter="intersection">🚦 Persimpangan</button>
+                <button type="button" class="filter-btn btn-street" data-filter="street">🛣️ Jalan</button>
+            </div>
 
-        <div class="district-filter">
-            <label for="district-filter" class="district-label">📍 Kecamatan</label>
-            <select id="district-filter" class="district-select" aria-label="Filter kecamatan">
-                <option value="all">Semua kecamatan</option>
-            </select>
-            <p class="controls-hint">
-                <i class="fa-solid fa-lightbulb"></i>
-                Pilih kecamatan tertentu untuk fokus pada wilayah Anda.
-            </p>
-        </div>
-    </aside>
+            <div class="district-filter">
+                <label for="district-filter" class="district-label">📍 Kecamatan</label>
+                <select id="district-filter" class="district-select" aria-label="Filter kecamatan">
+                    <option value="all">Semua kecamatan</option>
+                </select>
+                <p class="controls-hint">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    Pilih kecamatan tertentu untuk fokus pada wilayah Anda.
+                </p>
+            </div>
+        </aside>
 
-    <aside class="stats shadow-2xl ring-1 ring-white/40 animate__animated animate__fadeInRight" id="stats" aria-label="Statistik kamera CCTV">
+        <aside class="stats shadow-2xl ring-1 ring-white/40 animate__animated animate__fadeInRight" id="stats" aria-label="Statistik kamera CCTV">
         <div class="stats-header">
             <div class="stats-title">
                 <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
@@ -208,6 +211,18 @@
             </div>
         </div>
     </aside>
+    </div>
+
+    <div class="mobile-panel-overlay" data-mobile-overlay aria-hidden="true"></div>
+    <button type="button"
+            class="mobile-fab"
+            data-toggle-mobile-panel
+            aria-expanded="false"
+            aria-controls="panel-cluster"
+            aria-label="Buka panel filter">
+        <i class="fa-solid fa-sliders"></i>
+        <span class="visually-hidden">Buka panel filter</span>
+    </button>
 
     <main id="map" role="application" aria-label="Peta interaktif CCTV Kota Malang"></main>
 

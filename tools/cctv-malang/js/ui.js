@@ -21,6 +21,11 @@ class UIManager {
         this.statsToggleButton = null;
         this.statsCollapsed = false;
         this.statsMediaQuery = null;
+        this.mobilePanel = null;
+        this.mobileToggleButton = null;
+        this.mobileOverlay = null;
+        this.mobilePanelOpen = false;
+        this.mobilePanelResizeHandler = null;
     }
 
     // Initialize UI components
@@ -32,6 +37,7 @@ class UIManager {
         this.initializeStats();
         this.initializePanelToggles();
         this.initializeQuickActions();
+        this.initializeMobilePanel();
         console.log('UI initialized successfully');
     }
 
@@ -64,6 +70,45 @@ class UIManager {
                 this.hideSearchResults(searchResults);
             }
         });
+    }
+
+    // Initialize mobile panel controls
+    initializeMobilePanel() {
+        this.mobilePanel = document.getElementById('panel-cluster');
+        this.mobileToggleButton = document.querySelector('[data-toggle-mobile-panel]');
+        this.mobileOverlay = document.querySelector('[data-mobile-overlay]');
+
+        if (!this.mobilePanel || !this.mobileToggleButton) {
+            return;
+        }
+
+        this.mobileToggleButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.toggleMobilePanel();
+        });
+
+        if (this.mobileOverlay) {
+            this.mobileOverlay.addEventListener('click', () => this.toggleMobilePanel(false, { silent: true }));
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && this.mobilePanelOpen && this.isMobileViewport()) {
+                this.toggleMobilePanel(false);
+            }
+        });
+
+        const resizeHandler = debounce(() => {
+            if (!this.isMobileViewport()) {
+                this.toggleMobilePanel(false, { silent: true });
+            } else if (!this.mobilePanelOpen) {
+                this.toggleMobilePanel(false, { silent: true });
+            }
+        }, 160);
+
+        this.mobilePanelResizeHandler = resizeHandler;
+        window.addEventListener('resize', resizeHandler);
+
+        this.toggleMobilePanel(false, { silent: true });
     }
 
     // Perform search
@@ -133,6 +178,7 @@ class UIManager {
         }
         
         this.hideSearchResults(document.querySelector('.search-results'));
+        this.autoCloseMobilePanel();
     }
 
     // Initialize filter buttons
@@ -150,6 +196,8 @@ class UIManager {
                     window.cctvApp.mapManager.addMarkers(filteredData);
                     this.updateStatistics(filteredData);
                 }
+
+                this.autoCloseMobilePanel();
             });
         });
     }
@@ -172,6 +220,7 @@ class UIManager {
             const filteredData = window.cctvApp.dataManager.setDistrict(value);
             window.cctvApp.mapManager.addMarkers(filteredData);
             this.updateStatistics(filteredData);
+            this.autoCloseMobilePanel();
         });
     }
 
@@ -1024,6 +1073,104 @@ class UIManager {
 
         this.statsToggleButton.setAttribute('title', label);
         this.statsToggleButton.setAttribute('aria-label', label);
+    }
+
+    // Determine if viewport is in mobile range
+    isMobileViewport() {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            return false;
+        }
+        return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    // Set mobile toggle button label
+    setMobileToggleLabel(label = null) {
+        if (!this.mobileToggleButton) {
+            return;
+        }
+
+        const text = label || (this.mobilePanelOpen ? 'Tutup panel filter' : 'Buka panel filter');
+        const hiddenLabel = this.mobileToggleButton.querySelector('.visually-hidden');
+        if (hiddenLabel) {
+            hiddenLabel.textContent = text;
+        }
+        this.mobileToggleButton.setAttribute('title', text);
+        this.mobileToggleButton.setAttribute('aria-label', text);
+    }
+
+    // Toggle mobile panel visibility
+    toggleMobilePanel(forceState = null, options = {}) {
+        if (!this.mobilePanel || !this.mobileToggleButton) {
+            return false;
+        }
+
+        if (!this.isMobileViewport()) {
+            this.mobilePanelOpen = false;
+            document.body.classList.remove('mobile-panel-open');
+            this.mobileToggleButton.classList.remove('is-active');
+            this.mobileToggleButton.setAttribute('aria-expanded', 'false');
+            if (this.mobileOverlay) {
+                this.mobileOverlay.classList.remove('is-visible');
+                this.mobileOverlay.setAttribute('aria-hidden', 'true');
+            }
+            if (this.mobilePanel) {
+                this.mobilePanel.setAttribute('aria-hidden', 'false');
+            }
+            this.setMobileToggleLabel('Buka panel filter');
+            return false;
+        }
+
+        const desiredState = forceState === null
+            ? !this.mobilePanelOpen
+            : Boolean(forceState);
+
+        this.mobilePanelOpen = desiredState;
+
+        document.body.classList.toggle('mobile-panel-open', desiredState);
+        this.mobileToggleButton.classList.toggle('is-active', desiredState);
+        this.mobileToggleButton.setAttribute('aria-expanded', desiredState ? 'true' : 'false');
+
+        if (this.mobileOverlay) {
+            this.mobileOverlay.classList.toggle('is-visible', desiredState);
+            this.mobileOverlay.setAttribute('aria-hidden', desiredState ? 'false' : 'true');
+        }
+
+        if (this.mobilePanel) {
+            this.mobilePanel.setAttribute('aria-hidden', desiredState ? 'false' : 'true');
+        }
+
+        this.setMobileToggleLabel();
+
+        if (desiredState && this.mobilePanel && typeof this.mobilePanel.scrollTo === 'function') {
+            this.mobilePanel.scrollTo({ top: 0, behavior: 'auto' });
+        }
+
+        if (desiredState && !options.silent) {
+            window.requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if (!this.mobilePanelOpen) {
+                        return;
+                    }
+                    const searchInput = document.querySelector('.search-input');
+                    if (searchInput) {
+                        try {
+                            searchInput.focus({ preventScroll: true });
+                        } catch (err) {
+                            searchInput.focus();
+                        }
+                    }
+                }, 220);
+            });
+        }
+
+        return desiredState;
+    }
+
+    // Auto-close panel when interaction completed on mobile
+    autoCloseMobilePanel() {
+        if (this.mobilePanelOpen && this.isMobileViewport()) {
+            this.toggleMobilePanel(false);
+        }
     }
 
     // Update individual stat element
