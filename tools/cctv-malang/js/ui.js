@@ -26,6 +26,9 @@ class UIManager {
         this.mobileOverlay = null;
         this.mobilePanelOpen = false;
         this.mobilePanelResizeHandler = null;
+        this.desktopToggleButton = null;
+        this.desktopFabLabel = null;
+        this.desktopPanelHidden = false;
     }
 
     // Initialize UI components
@@ -38,6 +41,7 @@ class UIManager {
         this.initializePanelToggles();
         this.initializeQuickActions();
         this.initializeMobilePanel();
+        this.initializeDesktopPanel();
         console.log('UI initialized successfully');
     }
 
@@ -103,12 +107,32 @@ class UIManager {
             } else if (!this.mobilePanelOpen) {
                 this.toggleMobilePanel(false, { silent: true });
             }
+
+            this.syncDesktopPanelVisibility();
         }, 160);
 
         this.mobilePanelResizeHandler = resizeHandler;
         window.addEventListener('resize', resizeHandler);
 
         this.toggleMobilePanel(false, { silent: true });
+        this.syncDesktopPanelVisibility();
+    }
+
+    // Initialize desktop panel toggle button
+    initializeDesktopPanel() {
+        this.desktopToggleButton = document.querySelector('[data-toggle-desktop-panel]');
+        this.desktopFabLabel = document.querySelector('.desktop-fab-label');
+
+        if (!this.desktopToggleButton) {
+            return;
+        }
+
+        this.desktopToggleButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.toggleDesktopPanel();
+        });
+
+        this.syncDesktopPanelVisibility();
     }
 
     // Perform search
@@ -1117,6 +1141,7 @@ class UIManager {
                 this.mobilePanel.setAttribute('aria-hidden', 'false');
             }
             this.setMobileToggleLabel('Buka panel filter');
+            this.syncDesktopPanelVisibility();
             return false;
         }
 
@@ -1171,6 +1196,71 @@ class UIManager {
         if (this.mobilePanelOpen && this.isMobileViewport()) {
             this.toggleMobilePanel(false);
         }
+    }
+
+    // Ensure desktop panel visibility matches current state and viewport
+    syncDesktopPanelVisibility(forceState = null) {
+        if (!this.desktopToggleButton || !this.mobilePanel) {
+            return;
+        }
+
+        if (this.isMobileViewport()) {
+            this.desktopPanelHidden = false;
+            document.body.classList.remove('desktop-panel-hidden');
+            this.desktopToggleButton.classList.remove('is-collapsed');
+            this.desktopToggleButton.setAttribute('aria-expanded', 'false');
+            this.mobilePanel.setAttribute('aria-hidden', 'false');
+            this.updateDesktopToggleLabel('Pengaturan');
+            return;
+        }
+
+        if (forceState !== null) {
+            this.desktopPanelHidden = Boolean(forceState);
+        }
+
+        document.body.classList.toggle('desktop-panel-hidden', this.desktopPanelHidden);
+        this.desktopToggleButton.classList.toggle('is-collapsed', this.desktopPanelHidden);
+        this.desktopToggleButton.setAttribute('aria-expanded', this.desktopPanelHidden ? 'false' : 'true');
+        this.mobilePanel.setAttribute('aria-hidden', this.desktopPanelHidden ? 'true' : 'false');
+        this.updateDesktopToggleLabel();
+    }
+
+    // Update desktop toggle label and tooltip
+    updateDesktopToggleLabel(explicitLabel = null) {
+        if (!this.desktopToggleButton) {
+            return;
+        }
+
+        const label = explicitLabel
+            || (this.desktopPanelHidden ? 'Tampilkan panel kontrol' : 'Sembunyikan panel kontrol');
+
+        const hiddenLabel = this.desktopToggleButton.querySelector('.visually-hidden');
+        if (hiddenLabel) {
+            hiddenLabel.textContent = label;
+        }
+
+        this.desktopToggleButton.setAttribute('aria-label', label);
+        this.desktopToggleButton.setAttribute('title', label);
+
+        if (this.desktopFabLabel) {
+            this.desktopFabLabel.textContent = this.desktopPanelHidden ? 'Panel tersembunyi' : 'Pengaturan';
+        }
+    }
+
+    // Toggle desktop panel visibility
+    toggleDesktopPanel(forceState = null) {
+        if (!this.desktopToggleButton || this.isMobileViewport()) {
+            return false;
+        }
+
+        const hidden = forceState === null
+            ? !this.desktopPanelHidden
+            : Boolean(forceState);
+
+        this.desktopPanelHidden = hidden;
+        this.syncDesktopPanelVisibility(hidden);
+
+        return !hidden;
     }
 
     // Update individual stat element

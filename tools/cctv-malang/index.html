@@ -123,6 +123,7 @@
                 </button>
             </div>
             <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
                 <input type="search"
                        class="search-input"
                        placeholder="Cari nama kamera, lokasi, atau kecamatan..."
@@ -223,6 +224,19 @@
         <i class="fa-solid fa-sliders"></i>
         <span class="visually-hidden">Buka panel filter</span>
     </button>
+
+    <div class="desktop-fab-container">
+        <button type="button"
+                class="desktop-fab"
+                data-toggle-desktop-panel
+                aria-expanded="true"
+                aria-controls="panel-cluster"
+                aria-label="Sembunyikan panel kontrol">
+            <i class="fa-solid fa-gear"></i>
+            <span class="visually-hidden">Sembunyikan panel kontrol</span>
+        </button>
+        <div class="desktop-fab-label" aria-hidden="true">Pengaturan</div>
+    </div>
 
     <main id="map" role="application" aria-label="Peta interaktif CCTV Kota Malang"></main>
 
