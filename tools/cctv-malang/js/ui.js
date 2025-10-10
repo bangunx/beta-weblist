@@ -17,6 +17,10 @@ class UIManager {
         this.panelToggleMap = new Map();
         this.locationMarker = null;
         this.boundOutsideClickHandler = this.handleOutsideClick.bind(this);
+        this.statsPanel = null;
+        this.statsToggleButton = null;
+        this.statsCollapsed = false;
+        this.statsMediaQuery = null;
     }
 
     // Initialize UI components
@@ -590,7 +594,49 @@ class UIManager {
 
     // Initialize statistics display
     initializeStats() {
-        // Statistics will be updated by external calls
+        this.statsPanel = document.getElementById('stats') || null;
+        this.statsToggleButton = document.querySelector('[data-toggle-stats]') || null;
+
+        const statsBody = this.statsPanel?.querySelector('.stats-body');
+        if (statsBody) {
+            statsBody.setAttribute('aria-hidden', 'false');
+        }
+
+        if (this.statsToggleButton) {
+            this.statsToggleButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.toggleStatsPanel();
+            });
+            this.updateStatsToggleLabel();
+        }
+
+        if (window.matchMedia) {
+            this.statsMediaQuery = window.matchMedia('(max-width: 768px)');
+
+            if (this.statsMediaQuery.matches) {
+                this.toggleStatsPanel(true);
+            }
+
+            const handleStatsMediaChange = (event) => {
+                if (!this.statsPanel) {
+                    return;
+                }
+
+                if (event.matches) {
+                    this.toggleStatsPanel(true);
+                } else if (this.statsCollapsed) {
+                    this.toggleStatsPanel(false);
+                }
+            };
+
+            // Modern browsers support addEventListener, fall back to addListener for older ones
+            if (typeof this.statsMediaQuery.addEventListener === 'function') {
+                this.statsMediaQuery.addEventListener('change', handleStatsMediaChange);
+            } else if (typeof this.statsMediaQuery.addListener === 'function') {
+                this.statsMediaQuery.addListener(handleStatsMediaChange);
+            }
+        }
+
         console.log('Statistics display initialized');
     }
 
@@ -935,6 +981,49 @@ class UIManager {
         if (progressLabel) {
             progressLabel.textContent = `${safePercentage}%`;
         }
+    }
+
+    // Toggle statistics panel
+    toggleStatsPanel(forceState = null) {
+        if (!this.statsPanel || !this.statsToggleButton) {
+            return;
+        }
+
+        const shouldCollapse = forceState === null
+            ? !this.statsCollapsed
+            : Boolean(forceState);
+
+        this.statsCollapsed = shouldCollapse;
+        this.statsPanel.classList.toggle('is-collapsed', shouldCollapse);
+
+        const statsBody = this.statsPanel.querySelector('.stats-body');
+        if (statsBody) {
+            statsBody.setAttribute('aria-hidden', shouldCollapse ? 'true' : 'false');
+        }
+
+        this.updateStatsToggleLabel();
+    }
+
+    // Update stats toggle labels and aria state
+    updateStatsToggleLabel() {
+        if (!this.statsToggleButton) {
+            return;
+        }
+
+        const expanded = !this.statsCollapsed;
+        this.statsToggleButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+        const label = expanded
+            ? 'Sembunyikan statistik'
+            : 'Tampilkan statistik';
+
+        const hiddenLabel = this.statsToggleButton.querySelector('.visually-hidden');
+        if (hiddenLabel) {
+            hiddenLabel.textContent = label;
+        }
+
+        this.statsToggleButton.setAttribute('title', label);
+        this.statsToggleButton.setAttribute('aria-label', label);
     }
 
     // Update individual stat element

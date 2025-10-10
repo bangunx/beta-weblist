@@ -150,46 +150,61 @@
 
     <aside class="stats shadow-2xl ring-1 ring-white/40 animate__animated animate__fadeInRight" id="stats" aria-label="Statistik kamera CCTV">
         <div class="stats-header">
-            <h3><i class="fa-solid fa-chart-column"></i> Statistik</h3>
-            <button type="button" class="stats-refresh" data-quick-action="refresh-data" aria-label="Perbarui data">
-                <i class="fa-solid fa-rotate"></i>
-            </button>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Total CCTV:</span>
-            <span class="stat-value" id="total-cctv">0</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">🟢 Online:</span>
-            <span class="stat-value" id="online-cctv">0</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">🔴 Offline:</span>
-            <span class="stat-value" id="offline-cctv">0</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">🚦 Persimpangan:</span>
-            <span class="stat-value" id="intersection-cctv">0</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">🛣️ Jalan:</span>
-            <span class="stat-value" id="street-cctv">0</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">🏙️ Kecamatan:</span>
-            <span class="stat-value" id="district-count">0</span>
-        </div>
-        <div class="stat-meta">
-            <span class="stat-label">⏱️ Diperbarui:</span>
-            <span class="stat-value" id="data-updated">-</span>
-        </div>
-        <div class="stat-progress" aria-live="polite">
-            <div class="stat-progress__header">
-                <span><i class="fa-solid fa-wave-square"></i> Tingkat kamera online</span>
-                <span id="stat-online-percentage-label">0%</span>
+            <div class="stats-title">
+                <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                <span>Statistik</span>
             </div>
-            <div class="stat-progress__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                <span class="stat-progress__fill" id="stat-online-percentage"></span>
+            <div class="stats-actions" role="group" aria-label="Aksi panel statistik">
+                <button type="button" class="stats-refresh" data-quick-action="refresh-data" aria-label="Perbarui data">
+                    <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                </button>
+                <button type="button"
+                        class="stats-toggle"
+                        data-toggle-stats
+                        aria-expanded="true"
+                        aria-controls="stats-body">
+                    <span class="visually-hidden">Sembunyikan statistik</span>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <div class="stats-body" id="stats-body" aria-hidden="false">
+            <div class="stat-item">
+                <span class="stat-label">Total CCTV:</span>
+                <span class="stat-value" id="total-cctv">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">🟢 Online:</span>
+                <span class="stat-value" id="online-cctv">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">🔴 Offline:</span>
+                <span class="stat-value" id="offline-cctv">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">🚦 Persimpangan:</span>
+                <span class="stat-value" id="intersection-cctv">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">🛣️ Jalan:</span>
+                <span class="stat-value" id="street-cctv">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">🏙️ Kecamatan:</span>
+                <span class="stat-value" id="district-count">0</span>
+            </div>
+            <div class="stat-meta">
+                <span class="stat-label">⏱️ Diperbarui:</span>
+                <span class="stat-value" id="data-updated">-</span>
+            </div>
+            <div class="stat-progress" aria-live="polite">
+                <div class="stat-progress__header">
+                    <span><i class="fa-solid fa-wave-square"></i> Tingkat kamera online</span>
+                    <span id="stat-online-percentage-label">0%</span>
+                </div>
+                <div class="stat-progress__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <span class="stat-progress__fill" id="stat-online-percentage"></span>
+                </div>
             </div>
         </div>
     </aside>
