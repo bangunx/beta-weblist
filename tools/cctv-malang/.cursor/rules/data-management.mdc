@@ -1,0 +1,111 @@
+---
+description: Guidelines for working with CCTV data and data management
+---
+
+# CCTV Data Management Guidelines
+
+## Data Structure
+The CCTV data follows a specific structure organized by districts in [data/cctv_organized.json](mdc:data/cctv_organized.json):
+
+```javascript
+{
+  "DistrictName": [
+    {
+      "id": "unique-uuid",
+      "name": "CCTV Name",
+      "status": 1, // 1 = online, 0 = offline
+      "latitude": "-7.981779115765",
+      "longitude": "112.63174579237",
+      "street": "Street address",
+      "district": "District name",
+      "city": "Kota Malang",
+      "camera_type": "Jalan", // or "Persimpangan"
+      "priority": "Normal", // "Tinggi", "Sedang", "Normal"
+      "webrtc_url": "http://stream.url",
+      "hls_url": "http://stream.url"
+    }
+  ]
+}
+```
+
+## Data Operations
+Always use the [CCTVDataManager](mdc:js/data-manager.js) class for data operations:
+
+### Loading Data
+```javascript
+const dataManager = new CCTVDataManager();
+const cctvData = await dataManager.loadData();
+```
+
+### Filtering and Search
+```javascript
+// Set filter
+dataManager.setFilter('online'); // 'all', 'online', 'offline', 'intersection', 'street'
+
+// Search
+const results = dataManager.setSearchQuery('search term');
+
+// Get filtered data
+const filteredData = dataManager.filterData();
+```
+
+### Statistics
+```javascript
+const stats = dataManager.getStatistics();
+// Returns: { total, online, offline, intersection, street, districts }
+```
+
+## Data Validation
+Always validate CCTV data before processing:
+
+```javascript
+function isValidCoordinate(lat, lon) {
+    return lat && lon && 
+           !isNaN(parseFloat(lat)) && 
+           !isNaN(parseFloat(lon)) &&
+           parseFloat(lat) >= -90 && parseFloat(lat) <= 90 &&
+           parseFloat(lon) >= -180 && parseFloat(lon) <= 180;
+}
+```
+
+## Performance Considerations
+- Use marker clustering for large datasets
+- Implement caching for frequently accessed data
+- Use debouncing for search operations
+- Filter data before creating markers
+- Clean up unused references
+
+## Data Export
+The CCTVDataManager supports multiple export formats:
+
+```javascript
+// JSON export
+const jsonData = dataManager.exportData('json');
+
+// CSV export  
+const csvData = dataManager.exportData('csv');
+
+// Raw data
+const rawData = dataManager.exportData();
+```
+
+## Error Handling
+Always handle data loading errors gracefully:
+
+```javascript
+try {
+    const data = await dataManager.loadData();
+    // Process data
+} catch (error) {
+    console.error('Data loading error:', error);
+    uiManager.showError('Gagal memuat data CCTV');
+}
+```
+
+## Data Updates
+When updating CCTV data:
+1. Maintain the district-based structure
+2. Ensure all required fields are present
+3. Validate coordinates and URLs
+4. Update timestamps if applicable
+5. Test with the existing application

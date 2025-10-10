@@ -1,0 +1,92 @@
+---
+globs: *.html,*.css
+---
+
+# HTML/CSS Standards for CCTV Malang
+
+## HTML Structure
+- Use semantic HTML5 elements
+- Include proper meta tags for viewport and charset
+- Use Indonesian language attribute (lang="id")
+- Structure content logically with proper headings
+- Include accessibility attributes (alt, aria-label, etc.)
+
+## CSS Organization
+- Use CSS Grid and Flexbox for layouts
+- Implement responsive design with mobile-first approach
+- Use CSS custom properties for consistent theming
+- Group related styles together
+- Use meaningful class names with BEM methodology when appropriate
+
+## Design System
+- Primary colors: #667eea (blue), #764ba2 (purple)
+- Status colors: #28a745 (online), #dc3545 (offline)
+- Use consistent spacing scale (8px, 16px, 24px, 32px)
+- Use Segoe UI font family for consistency
+- Implement glassmorphism effects with backdrop-filter
+
+## Responsive Breakpoints
+- Mobile: < 768px
+- Tablet: 768px - 1024px  
+- Desktop: > 1024px
+
+## Component Patterns
+- Use consistent button styles with hover effects
+- Implement loading states with spinners
+- Use modal patterns for detailed information
+- Create reusable popup components
+- Implement proper focus management
+
+## Performance Considerations
+- Minimize CSS specificity conflicts
+- Use transform and opacity for animations
+- Implement CSS containment where possible
+- Use will-change property sparingly
+- Optimize images and use appropriate formats
+
+## Accessibility
+- Ensure sufficient color contrast ratios
+- Implement keyboard navigation support
+- Use proper heading hierarchy
+- Include focus indicators
+- Provide alternative text for images
+
+## Example CSS Structure
+```css
+/* Component base */
+.component-name {
+    /* Layout properties */
+    display: flex;
+    flex-direction: column;
+    
+    /* Spacing */
+    padding: 16px;
+    margin: 8px 0;
+    
+    /* Visual properties */
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    
+    /* Transitions */
+    transition: all 0.3s ease;
+}
+
+/* Component states */
+.component-name:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+
+.component-name.active {
+    /* Active state styles */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .component-name {
+        padding: 12px;
+        font-size: 0.9em;
+    }
+}
+```

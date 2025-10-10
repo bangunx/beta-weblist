@@ -1,0 +1,72 @@
+---
+globs: *.js
+---
+
+# JavaScript Coding Standards for CCTV Malang
+
+## Code Style
+- Use ES6+ features (classes, arrow functions, async/await, destructuring)
+- Use semicolons consistently
+- Use camelCase for variables and functions
+- Use PascalCase for class names
+- Use UPPER_SNAKE_CASE for constants
+
+## Module Structure
+- Each module should export a single class or object
+- Use JSDoc comments for classes and public methods
+- Keep modules focused on single responsibility
+- Use dependency injection where possible
+
+## Error Handling
+- Always wrap async operations in try-catch blocks
+- Provide meaningful error messages in Indonesian for user-facing errors
+- Log technical details to console for debugging
+- Use the UIManager.showError() method for user notifications
+
+## Performance Guidelines
+- Use debouncing for search and filter operations
+- Implement caching for frequently accessed data
+- Use marker clustering for large datasets
+- Clean up event listeners and references to prevent memory leaks
+- Use requestAnimationFrame for smooth animations
+
+## Map-Specific Patterns
+- Always validate coordinates before creating markers
+- Use Leaflet's built-in methods for map operations
+- Implement proper marker clustering for performance
+- Use custom icons for different CCTV statuses
+- Handle map events with proper cleanup
+
+## Data Management
+- Validate CCTV data structure before processing
+- Use the CCTVDataManager class for all data operations
+- Implement proper filtering and search functionality
+- Cache filtered results when possible
+- Export data in multiple formats (JSON, CSV)
+
+## Example Code Structure
+```javascript
+/**
+ * Brief description of the class/module
+ */
+class ExampleClass {
+    constructor() {
+        this.property = null;
+    }
+
+    /**
+     * Brief description of the method
+     * @param {string} param - Parameter description
+     * @returns {Promise<Object>} Return description
+     */
+    async methodName(param) {
+        try {
+            // Implementation
+            return result;
+        } catch (error) {
+            console.error('Error in methodName:', error);
+            throw new Error('User-friendly error message');
+        }
+    }
+}
+```

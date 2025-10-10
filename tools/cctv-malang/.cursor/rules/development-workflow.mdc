@@ -1,0 +1,181 @@
+---
+description: Development workflow and best practices for the CCTV Malang project
+---
+
+# Development Workflow Guidelines
+
+## Project Setup
+The CCTV Malang project is a pure client-side application that can run without a server:
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd cctv-malang
+
+# Open in browser directly
+open index.html
+
+# Or use a local server for development
+python -m http.server 8000
+# or
+npx serve .
+```
+
+## File Organization
+Follow the established file structure:
+
+```
+cctv-malang/
+├── index.html              # Main entry point
+├── styles.css              # Global styles
+├── js/
+│   ├── app.js              # Main application class
+│   ├── data-manager.js     # Data management
+│   ├── map.js              # Map operations
+│   ├── ui.js               # UI interactions
+│   ├── utils.js            # Utility functions
+│   ├── performance.js      # Performance optimization
+│   └── keyboard.js         # Keyboard shortcuts
+├── data/
+│   └── cctv_organized.json # CCTV dataset
+└── .cursor/
+    └── rules/              # Cursor rules
+```
+
+## Development Process
+1. **Plan Changes**: Understand the modular architecture
+2. **Edit Files**: Use appropriate modules for changes
+3. **Test Locally**: Test in browser with local server
+4. **Validate**: Check for errors and performance issues
+5. **Commit**: Use descriptive commit messages
+
+## Code Quality
+- Follow the established coding standards
+- Use JSDoc comments for documentation
+- Implement proper error handling
+- Test on multiple browsers
+- Ensure mobile responsiveness
+
+## Testing Checklist
+Before committing changes:
+
+- [ ] Application loads without errors
+- [ ] Map displays correctly
+- [ ] Search functionality works
+- [ ] Filters work properly
+- [ ] Statistics update correctly
+- [ ] Mobile responsiveness maintained
+- [ ] Performance remains acceptable
+- [ ] No console errors
+
+## Browser Testing
+Test on supported browsers:
+- Chrome 60+
+- Firefox 55+
+- Safari 12+
+- Edge 79+
+
+## Performance Testing
+Monitor performance metrics:
+- Page load time
+- Memory usage
+- Frame rate
+- Network requests
+- Bundle size
+
+## Debugging
+Use browser DevTools for debugging:
+
+```javascript
+// Enable debug mode
+window.DEBUG = true;
+
+// Log performance metrics
+if (window.DEBUG) {
+    console.log('Performance metrics:', performanceManager.getMetrics());
+}
+
+// Monitor memory usage
+if (window.DEBUG && performance.memory) {
+    console.log('Memory usage:', performance.memory);
+}
+```
+
+## Error Handling
+Implement comprehensive error handling:
+
+```javascript
+try {
+    // Operation
+} catch (error) {
+    console.error('Error details:', error);
+    
+    // Show user-friendly message
+    uiManager.showError('Terjadi kesalahan. Silakan coba lagi.');
+    
+    // Report error (if needed)
+    if (window.DEBUG) {
+        reportError(error);
+    }
+}
+```
+
+## Git Workflow
+Use consistent commit messages:
+
+```bash
+# Feature commits
+git commit -m "feat: add search functionality"
+
+# Bug fixes
+git commit -m "fix: resolve marker clustering issue"
+
+# Performance improvements
+git commit -m "perf: optimize marker rendering"
+
+# Documentation
+git commit -m "docs: update README with new features"
+```
+
+## Deployment
+For production deployment:
+
+1. **Minify Assets**: Use tools like UglifyJS, CSSNano
+2. **Optimize Images**: Compress and use appropriate formats
+3. **Test Production**: Test minified version
+4. **Monitor**: Set up error monitoring and analytics
+
+## Maintenance
+Regular maintenance tasks:
+
+- Update dependencies
+- Monitor performance
+- Check for security issues
+- Update documentation
+- Review and optimize code
+- Test on new browser versions
+
+## Troubleshooting
+Common issues and solutions:
+
+### Map Not Loading
+- Check Leaflet CDN links
+- Verify container element exists
+- Check console for errors
+
+### Data Not Loading
+- Verify JSON file path
+- Check data format
+- Validate coordinates
+
+### Performance Issues
+- Enable marker clustering
+- Implement debouncing
+- Check memory usage
+- Optimize images
+
+### Mobile Issues
+- Test responsive design
+- Check touch events
+- Verify viewport meta tag
+- Test on actual devices

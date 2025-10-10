@@ -1,0 +1,39 @@
+---
+alwaysApply: true
+---
+
+# CCTV Malang Project Structure Guide
+
+This is a modular CCTV mapping application for Kota Malang built with pure HTML, CSS, and JavaScript.
+
+## Main Entry Points
+- [index.html](mdc:index.html) - Original monolithic version with embedded CSS and JavaScript
+- [index-modular.html](mdc:index-modular.html) - Modular version using separate JS modules (if exists)
+
+## Core Architecture
+The application follows a modular architecture with these key components:
+
+### Data Layer
+- [js/data-manager.js](mdc:js/data-manager.js) - CCTVDataManager class for data operations, filtering, and statistics
+- [data/cctv_organized.json](mdc:data/cctv_organized.json) - Main CCTV dataset organized by districts
+
+### Application Layer  
+- [js/app.js](mdc:js/app.js) - CCTVApp main application class that orchestrates all modules
+- [js/map.js](mdc:js/map.js) - MapManager class for Leaflet map operations and marker management
+- [js/ui.js](mdc:js/ui.js) - UIManager class for user interface interactions and controls
+
+### Utility Layer
+- [js/utils.js](mdc:js/utils.js) - Utility functions for coordinates, distance calculations, and formatting
+- [js/performance.js](mdc:js/performance.js) - PerformanceManager for optimization and caching
+- [js/keyboard.js](mdc:js/keyboard.js) - KeyboardManager for keyboard shortcuts and navigation
+
+## Key Features
+- Interactive map using Leaflet.js with marker clustering
+- Real-time search and filtering by status (online/offline) and type (intersection/street)
+- Live statistics display
+- Responsive design for desktop and mobile
+- Keyboard shortcuts for power users
+- Performance optimizations with caching and lazy loading
+
+## Data Structure
+CCTV objects contain: id, name, status, coordinates, address info, camera type, priority, and streaming URLs.

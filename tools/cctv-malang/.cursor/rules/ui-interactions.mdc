@@ -1,0 +1,231 @@
+---
+description: Guidelines for user interface interactions and controls
+---
+
+# UI Interactions Guidelines
+
+## UI Manager Usage
+Use the [UIManager](mdc:js/ui.js) class for all UI operations:
+
+```javascript
+const uiManager = new UIManager();
+uiManager.initialize();
+```
+
+## Search Functionality
+Implement debounced search with real-time results:
+
+```javascript
+// Initialize search with debouncing
+const debouncedSearch = debounce((query) => {
+    this.performSearch(query, searchResults);
+}, 300);
+
+searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    
+    if (query.length < 2) {
+        this.hideSearchResults(searchResults);
+        return;
+    }
+    
+    debouncedSearch(query);
+});
+```
+
+## Filter Controls
+Implement consistent filter button behavior:
+
+```javascript
+// Filter button click handler
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const filter = this.getAttribute('data-filter');
+        
+        // Update active button
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('active');
+        });
+        this.classList.add('active');
+        
+        // Apply filter
+        filterMarkers(filter);
+    });
+});
+```
+
+## Loading States
+Show loading indicators during operations:
+
+```javascript
+// Show loading
+uiManager.showLoading('Memuat data CCTV...');
+
+// Hide loading
+uiManager.hideLoading();
+```
+
+## Error Handling
+Display user-friendly error messages:
+
+```javascript
+function showError(message) {
+    uiManager.showError(message);
+    // or
+    document.getElementById('loading').innerHTML = `
+        <h2>❌ Error</h2>
+        <p>${message}</p>
+        <button onclick="location.reload()" class="popup-btn">🔄 Reload</button>
+    `;
+}
+```
+
+## Statistics Display
+Update statistics in real-time:
+
+```javascript
+function updateStatistics(cctvs) {
+    const total = cctvs.length;
+    const online = cctvs.filter(c => c.status === 1).length;
+    const offline = total - online;
+    const intersection = cctvs.filter(c => c.camera_type === 'Persimpangan').length;
+    const street = cctvs.filter(c => c.camera_type === 'Jalan').length;
+    
+    document.getElementById('total-cctv').textContent = total;
+    document.getElementById('online-cctv').textContent = online;
+    document.getElementById('offline-cctv').textContent = offline;
+    document.getElementById('intersection-cctv').textContent = intersection;
+    document.getElementById('street-cctv').textContent = street;
+}
+```
+
+## Modal Dialogs
+Create consistent modal patterns:
+
+```javascript
+// Show modal
+function showModal(title, content) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                ${content}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close modal handlers
+    modal.querySelector('.modal-close').onclick = () => modal.remove();
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+    };
+}
+```
+
+## Keyboard Shortcuts
+Implement keyboard navigation:
+
+```javascript
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    switch(e.key) {
+        case 'Escape':
+            // Reset filters
+            filterMarkers('all');
+            break;
+        case 'F11':
+            // Toggle fullscreen
+            toggleFullscreen();
+            break;
+        case '+':
+        case '=':
+            // Zoom in
+            map.zoomIn();
+            break;
+        case '-':
+            // Zoom out
+            map.zoomOut();
+            break;
+    }
+});
+```
+
+## Responsive Design
+Handle mobile interactions:
+
+```javascript
+// Mobile-specific interactions
+if (window.innerWidth < 768) {
+    // Adjust UI for mobile
+    document.querySelector('.controls').style.display = 'none';
+    
+    // Add mobile menu toggle
+    const mobileMenu = document.createElement('button');
+    mobileMenu.className = 'mobile-menu-toggle';
+    mobileMenu.innerHTML = '☰';
+    document.querySelector('.header').appendChild(mobileMenu);
+}
+```
+
+## Button States
+Implement consistent button states:
+
+```javascript
+// Button hover effects
+.filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+// Active button state
+.filter-btn.active {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.5), 
+                0 0 0 5px rgba(102, 126, 234, 0.3);
+    transform: scale(1.05);
+}
+```
+
+## Accessibility
+Ensure proper accessibility:
+
+```javascript
+// Focus management
+function focusSearch() {
+    document.querySelector('.search-input').focus();
+}
+
+// Keyboard navigation
+function handleKeyboardNavigation(e) {
+    if (e.key === 'Tab') {
+        // Handle tab navigation
+    }
+}
+
+// Screen reader support
+function announceToScreenReader(message) {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.className = 'sr-only';
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+    
+    setTimeout(() => {
+        document.body.removeChild(announcement);
+    }, 1000);
+}
+```
+
+## Performance Tips
+- Use debouncing for search inputs
+- Implement virtual scrolling for large lists
+- Use requestAnimationFrame for smooth animations
+- Clean up event listeners
+- Use CSS transforms for better performance

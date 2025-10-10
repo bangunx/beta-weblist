@@ -1,0 +1,243 @@
+---
+description: Performance optimization guidelines and best practices
+---
+
+# Performance Optimization Guidelines
+
+## Performance Manager
+Use the [PerformanceManager](mdc:js/performance.js) class for performance monitoring:
+
+```javascript
+const performanceManager = new PerformanceManager();
+performanceManager.startMonitoring();
+```
+
+## Marker Clustering
+Always use marker clustering for large datasets:
+
+```javascript
+const markerCluster = L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true
+});
+```
+
+## Debouncing
+Implement debouncing for search and filter operations:
+
+```javascript
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Usage
+const debouncedSearch = debounce((query) => {
+    performSearch(query);
+}, 300);
+```
+
+## Caching
+Implement caching for frequently accessed data:
+
+```javascript
+class DataCache {
+    constructor(maxSize = 100) {
+        this.cache = new Map();
+        this.maxSize = maxSize;
+    }
+    
+    get(key) {
+        if (this.cache.has(key)) {
+            const value = this.cache.get(key);
+            this.cache.delete(key);
+            this.cache.set(key, value);
+            return value;
+        }
+        return null;
+    }
+    
+    set(key, value) {
+        if (this.cache.size >= this.maxSize) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        this.cache.set(key, value);
+    }
+}
+```
+
+## Lazy Loading
+Implement lazy loading for markers and data:
+
+```javascript
+function loadMarkersInViewport() {
+    const bounds = map.getBounds();
+    const visibleMarkers = markers.filter(marker => {
+        const latLng = marker.getLatLng();
+        return bounds.contains(latLng);
+    });
+    
+    // Only process visible markers
+    processMarkers(visibleMarkers);
+}
+```
+
+## Memory Management
+Clean up unused references and event listeners:
+
+```javascript
+function cleanup() {
+    // Remove event listeners
+    map.off('click');
+    map.off('zoomend');
+    
+    // Clear markers
+    map.removeLayer(markerCluster);
+    markers = [];
+    
+    // Clear caches
+    if (window.dataCache) {
+        window.dataCache.clear();
+    }
+    
+    // Clear timeouts
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+}
+```
+
+## Request Animation Frame
+Use requestAnimationFrame for smooth animations:
+
+```javascript
+function animateElement(element, start, end, duration) {
+    const startTime = performance.now();
+    
+    function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        const current = start + (end - start) * progress;
+        element.style.transform = `translateY(${current}px)`;
+        
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        }
+    }
+    
+    requestAnimationFrame(animate);
+}
+```
+
+## Virtual Scrolling
+Implement virtual scrolling for large lists:
+
+```javascript
+class VirtualScroll {
+    constructor(container, items, itemHeight) {
+        this.container = container;
+        this.items = items;
+        this.itemHeight = itemHeight;
+        this.visibleCount = Math.ceil(container.clientHeight / itemHeight);
+        this.scrollTop = 0;
+        
+        this.render();
+        this.bindEvents();
+    }
+    
+    render() {
+        const startIndex = Math.floor(this.scrollTop / this.itemHeight);
+        const endIndex = Math.min(startIndex + this.visibleCount, this.items.length);
+        
+        const visibleItems = this.items.slice(startIndex, endIndex);
+        this.container.innerHTML = visibleItems.map(item => 
+            `<div class="virtual-item">${item}</div>`
+        ).join('');
+    }
+}
+```
+
+## Image Optimization
+Optimize images and use appropriate formats:
+
+```javascript
+function optimizeImage(src, width, height) {
+    // Use WebP format if supported
+    if (supportsWebP()) {
+        return src.replace(/\.(jpg|jpeg|png)$/, '.webp');
+    }
+    
+    // Use appropriate image dimensions
+    return `${src}?w=${width}&h=${height}&q=80`;
+}
+
+function supportsWebP() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+}
+```
+
+## Bundle Optimization
+Minimize JavaScript bundle size:
+
+```javascript
+// Use dynamic imports for large modules
+async function loadMapModule() {
+    const { MapManager } = await import('./js/map.js');
+    return new MapManager();
+}
+
+// Use tree shaking
+import { debounce, throttle } from './js/utils.js';
+```
+
+## Monitoring Performance
+Monitor performance metrics:
+
+```javascript
+function monitorPerformance() {
+    // Monitor memory usage
+    if (performance.memory) {
+        console.log('Memory usage:', {
+            used: Math.round(performance.memory.usedJSHeapSize / 1048576),
+            total: Math.round(performance.memory.totalJSHeapSize / 1048576),
+            limit: Math.round(performance.memory.jsHeapSizeLimit / 1048576)
+        });
+    }
+    
+    // Monitor frame rate
+    let lastTime = performance.now();
+    function measureFPS() {
+        const currentTime = performance.now();
+        const fps = 1000 / (currentTime - lastTime);
+        console.log('FPS:', Math.round(fps));
+        lastTime = currentTime;
+        requestAnimationFrame(measureFPS);
+    }
+    requestAnimationFrame(measureFPS);
+}
+```
+
+## Best Practices
+- Use CSS transforms instead of changing layout properties
+- Minimize DOM manipulations
+- Use event delegation for dynamic content
+- Implement proper error boundaries
+- Use Web Workers for heavy computations
+- Optimize network requests with compression
+- Use service workers for caching
+- Implement proper cleanup on page unload

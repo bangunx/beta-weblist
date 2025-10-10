@@ -1,0 +1,170 @@
+---
+description: Guidelines for Leaflet map operations and marker management
+---
+
+# Map Operations Guidelines
+
+## Map Initialization
+Use the [MapManager](mdc:js/map.js) class for all map operations:
+
+```javascript
+const mapManager = new MapManager();
+mapManager.initialize('map', [-7.98, 112.62], 13);
+```
+
+## Marker Management
+### Creating Markers
+```javascript
+// Create custom icon based on status
+const icon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div class="marker-${status ? 'online' : 'offline'}"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+});
+
+// Create marker with popup
+const marker = L.marker([lat, lon], { icon: icon });
+marker.bindPopup(popupContent, {
+    maxWidth: 350,
+    className: 'custom-popup'
+});
+
+// Store CCTV data in marker
+marker.cctvData = cctv;
+```
+
+### Marker Clustering
+```javascript
+// Initialize cluster group
+const markerCluster = L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true
+});
+
+// Add markers to cluster
+markerCluster.addLayers(markers);
+map.addLayer(markerCluster);
+```
+
+## Popup Content
+Create consistent popup content using the standard format:
+
+```javascript
+function createPopupContent(cctv) {
+    const status = cctv.status === 1;
+    const statusText = status ? 'Online' : 'Offline';
+    const statusClass = status ? 'status-online' : 'status-offline';
+    const statusIcon = status ? '🟢' : '🔴';
+    
+    return `
+        <div class="popup-header">
+            <div class="popup-title">${cctv.name}</div>
+            <div class="popup-status ${statusClass}">${statusIcon} ${statusText}</div>
+        </div>
+        <div class="popup-body">
+            <div class="popup-info">
+                <strong>📍 Lokasi:</strong> ${cctv.street}<br>
+                <strong>🏘️ Kecamatan:</strong> ${cctv.district}<br>
+                <strong>📹 Tipe:</strong> ${cctv.camera_type}<br>
+                <strong>⭐ Prioritas:</strong> ${cctv.priority}
+            </div>
+            <div class="popup-buttons">
+                ${cctv.webrtc_url ? `<a href="${cctv.webrtc_url}" target="_blank" class="popup-btn popup-btn-stream">🎬 Live Stream</a>` : ''}
+                ${cctv.hls_url ? `<a href="${cctv.hls_url}" target="_blank" class="popup-btn popup-btn-detail">📺 HLS Stream</a>` : ''}
+                <button onclick="showCCTVDetails('${cctv.id}')" class="popup-btn popup-btn-detail">ℹ️ Detail Lengkap</button>
+            </div>
+        </div>
+    `;
+}
+```
+
+## Map Events
+Handle common map events:
+
+```javascript
+// Map click
+map.on('click', function(e) {
+    console.log('Map clicked at:', e.latlng);
+});
+
+// Zoom events
+map.on('zoomend', function() {
+    console.log('Zoom level:', map.getZoom());
+});
+
+// Marker click
+marker.on('click', function(e) {
+    // Handle marker click
+});
+```
+
+## Filtering Markers
+Implement marker filtering:
+
+```javascript
+function filterMarkers(filter) {
+    // Remove existing cluster
+    map.removeLayer(markerCluster);
+    
+    // Filter markers based on criteria
+    const filteredMarkers = markers.filter(marker => {
+        const cctv = marker.cctvData;
+        switch(filter) {
+            case 'online': return cctv.status === 1;
+            case 'offline': return cctv.status === 0;
+            case 'intersection': return cctv.camera_type === 'Persimpangan';
+            case 'street': return cctv.camera_type === 'Jalan';
+            default: return true;
+        }
+    });
+    
+    // Create new cluster with filtered markers
+    markerCluster = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50
+    });
+    
+    if (filteredMarkers.length > 0) {
+        markerCluster.addLayers(filteredMarkers);
+        map.addLayer(markerCluster);
+        
+        // Fit map to filtered markers
+        const group = new L.featureGroup(filteredMarkers);
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+}
+```
+
+## Performance Optimization
+- Use marker clustering for large datasets
+- Implement chunked loading
+- Use appropriate cluster radius
+- Clean up unused markers and layers
+- Use requestAnimationFrame for smooth animations
+
+## Coordinate Validation
+Always validate coordinates before creating markers:
+
+```javascript
+function isValidCoordinate(lat, lon) {
+    return lat && lon && 
+           !isNaN(parseFloat(lat)) && 
+           !isNaN(parseFloat(lon)) &&
+           parseFloat(lat) >= -90 && parseFloat(lat) <= 90 &&
+           parseFloat(lon) >= -180 && parseFloat(lon) <= 180;
+}
+```
+
+## Map Bounds
+Fit map to show all markers:
+
+```javascript
+if (markers.length > 0) {
+    const group = new L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.1));
+}
+```
