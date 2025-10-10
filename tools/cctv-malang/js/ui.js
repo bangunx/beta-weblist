@@ -14,6 +14,9 @@ class UIManager {
         this.currentDistrict = 'all';
         this.districtFilterSelect = null;
         this.availableDistricts = [];
+        this.panelToggleMap = new Map();
+        this.locationMarker = null;
+        this.boundOutsideClickHandler = this.handleOutsideClick.bind(this);
     }
 
     // Initialize UI components
@@ -23,6 +26,8 @@ class UIManager {
         this.initializeDistrictFilter();
         this.initializeModal();
         this.initializeStats();
+        this.initializePanelToggles();
+        this.initializeQuickActions();
         console.log('UI initialized successfully');
     }
 
@@ -479,8 +484,25 @@ class UIManager {
             return;
         }
 
-        this.activeVideoElement = videoEl;
         const fallbackMessage = videoEl.closest('.detail-item--video')?.querySelector('.video-fallback');
+        if (fallbackMessage) {
+            fallbackMessage.hidden = true;
+            fallbackMessage.textContent = 'Browser Anda belum mendukung HLS. Gunakan tautan di atas atau pemutar eksternal.';
+        }
+
+        const playableUrl = this.getPlayableStreamUrl(hlsUrl);
+        if (!playableUrl) {
+            if (fallbackMessage) {
+                const protocol = window.location?.protocol || '';
+                fallbackMessage.textContent = protocol === 'https:'
+                    ? 'Streaming tidak bisa diputar otomatis karena sumber hanya tersedia melalui koneksi HTTP. Gunakan tombol "Buka di tab baru" di atas untuk melihat video.'
+                    : 'Streaming tidak bisa diputar secara otomatis. Coba buka tautan langsung di tab baru.';
+                fallbackMessage.hidden = false;
+            }
+            return;
+        }
+
+        this.activeVideoElement = videoEl;
 
         if (window.Hls && window.Hls.isSupported()) {
             this.hlsInstance = new window.Hls({
@@ -489,19 +511,23 @@ class UIManager {
                 backBufferLength: 30
             });
 
-            this.hlsInstance.loadSource(hlsUrl);
+            this.hlsInstance.loadSource(playableUrl);
             this.hlsInstance.attachMedia(videoEl);
 
             this.hlsInstance.on(window.Hls.Events.ERROR, (event, data) => {
                 console.error('HLS error:', data);
                 if (fallbackMessage) {
+                    fallbackMessage.textContent = data?.response?.code === 0
+                        ? 'Tidak dapat memuat stream. Jika Anda membuka situs melalui HTTPS, buka tautan live stream di tab baru.'
+                        : 'Gagal memutar stream. Coba buka tautan live stream di tab baru.';
                     fallbackMessage.hidden = false;
                 }
             });
         } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-            videoEl.src = hlsUrl;
+            videoEl.src = playableUrl;
         } else {
             if (fallbackMessage) {
+                fallbackMessage.textContent = 'Peramban ini belum mendukung HLS langsung. Gunakan tautan live stream di tab baru atau pemutar eksternal.';
                 fallbackMessage.hidden = false;
             }
         }
@@ -522,10 +548,345 @@ class UIManager {
         }
     }
 
+    // Resolve playable stream URL, respecting HTTPS contexts
+    getPlayableStreamUrl(rawUrl) {
+        if (!rawUrl || typeof rawUrl !== 'string') {
+            return null;
+        }
+
+        const trimmed = rawUrl.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        if (trimmed.startsWith('https://')) {
+            return trimmed;
+        }
+
+        if (trimmed.startsWith('//')) {
+            return (window.location?.protocol || 'https:') + trimmed;
+        }
+
+        if (trimmed.startsWith('http://')) {
+            if (window.location?.protocol === 'https:') {
+                return null;
+            }
+            return trimmed;
+        }
+
+        if (trimmed.startsWith('/')) {
+            const origin = window.location?.origin;
+            if (!origin) {
+                return null;
+            }
+            if (origin.startsWith('https://') && window.location?.protocol === 'https:') {
+                return null;
+            }
+            return origin.replace(/\/$/, '') + trimmed;
+        }
+
+        return trimmed;
+    }
+
     // Initialize statistics display
     initializeStats() {
         // Statistics will be updated by external calls
         console.log('Statistics display initialized');
+    }
+
+    // Initialize panel toggles
+    initializePanelToggles() {
+        const toggleButtons = document.querySelectorAll('[data-toggle-panel]');
+        if (!toggleButtons.length) {
+            return;
+        }
+
+        toggleButtons.forEach((button) => {
+            const selector = button.getAttribute('data-toggle-panel');
+            if (!selector) {
+                return;
+            }
+
+            const panel = document.querySelector(selector);
+            if (!panel) {
+                return;
+            }
+
+            const toggles = this.panelToggleMap.get(panel) || [];
+            toggles.push(button);
+            this.panelToggleMap.set(panel, toggles);
+
+            button.setAttribute('aria-expanded', panel.classList.contains('is-visible') ? 'true' : 'false');
+
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                const isOpen = this.togglePanel(panel);
+                toggles.forEach((toggleBtn) => toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false'));
+            });
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeAllPanels();
+            }
+        });
+
+        document.addEventListener('click', this.boundOutsideClickHandler);
+    }
+
+    // Handle click outside toggle panels
+    handleOutsideClick(event) {
+        if (!this.panelToggleMap.size) {
+            return;
+        }
+
+        let shouldClose = false;
+
+        this.panelToggleMap.forEach((toggles, panel) => {
+            if (!panel.classList.contains('is-visible')) {
+                return;
+            }
+
+            const clickedInsidePanel = panel.contains(event.target);
+            const clickedToggle = event.target.closest('[data-toggle-panel]');
+
+            if (!clickedInsidePanel && !clickedToggle) {
+                this.closePanel(panel);
+                toggles.forEach((toggleBtn) => toggleBtn.setAttribute('aria-expanded', 'false'));
+                shouldClose = true;
+            }
+        });
+
+        if (shouldClose) {
+            event.stopPropagation();
+        }
+    }
+
+    // Toggle panel visibility
+    togglePanel(panelOrSelector) {
+        const panel = typeof panelOrSelector === 'string'
+            ? document.querySelector(panelOrSelector)
+            : panelOrSelector;
+
+        if (!panel) {
+            return false;
+        }
+
+        const shouldOpen = !panel.classList.contains('is-visible');
+
+        if (shouldOpen) {
+            this.closeAllPanels(panel);
+        }
+
+        panel.classList.toggle('is-visible', shouldOpen);
+        panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+
+        if (shouldOpen) {
+            const focusable = panel.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable && typeof focusable.focus === 'function') {
+                focusable.focus({ preventScroll: true });
+            }
+        }
+
+        return shouldOpen;
+    }
+
+    // Close all registered panels
+    closeAllPanels(exceptPanel = null) {
+        if (!this.panelToggleMap.size) {
+            return;
+        }
+
+        this.panelToggleMap.forEach((toggles, panel) => {
+            if (panel === exceptPanel) {
+                return;
+            }
+            this.closePanel(panel);
+            toggles.forEach((toggleBtn) => toggleBtn.setAttribute('aria-expanded', 'false'));
+        });
+    }
+
+    // Close specific panel
+    closePanel(panel) {
+        if (!panel || !panel.classList.contains('is-visible')) {
+            return;
+        }
+
+        panel.classList.remove('is-visible');
+        panel.setAttribute('aria-hidden', 'true');
+    }
+
+    // Initialize quick action buttons
+    initializeQuickActions() {
+        const quickActionButtons = document.querySelectorAll('[data-quick-action]');
+        if (!quickActionButtons.length) {
+            return;
+        }
+
+        quickActionButtons.forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                const action = button.getAttribute('data-quick-action');
+                if (!action) {
+                    return;
+                }
+                this.handleQuickAction(action, button);
+            });
+        });
+    }
+
+    // Perform quick action logic
+    async handleQuickAction(action, trigger = null) {
+        const app = window.cctvApp;
+
+        if (!app || !app.isInitialized) {
+            this.showNotification('Aplikasi masih menyiapkan data. Silakan coba lagi sebentar lagi.', 'warning', 2500);
+            return;
+        }
+
+        const mapManager = app?.mapManager;
+
+        try {
+            switch (action) {
+                case 'refresh-data':
+                    this.setButtonBusy(trigger, true);
+                    await app.refreshData();
+                    break;
+
+                case 'reset-view':
+                    if (!mapManager || !mapManager.markers || !mapManager.markers.length) {
+                        this.showNotification('Belum ada kamera yang dapat ditampilkan saat ini.', 'warning', 2500);
+                        return;
+                    }
+                    mapManager.fitToMarkers();
+                    this.showNotification('Tampilan peta dikembalikan ke semua kamera.', 'info', 2200);
+                    break;
+
+                case 'focus-city':
+                    if (!mapManager) {
+                        this.showNotification('Peta belum siap digunakan.', 'warning', 2500);
+                        return;
+                    }
+                    mapManager.centerOn(-7.98, 112.62, 13);
+                    this.showNotification('Fokus diarahkan ke pusat Kota Malang.', 'info', 2200);
+                    break;
+
+                case 'zoom-in':
+                case 'zoom-out':
+                    if (!mapManager || !mapManager.map) {
+                        this.showNotification('Peta belum siap digunakan.', 'warning', 2500);
+                        return;
+                    }
+                    {
+                        const step = action === 'zoom-in' ? 1 : -1;
+                        const currentZoom = mapManager.getZoom();
+                        mapManager.setZoom(currentZoom + step);
+                    }
+                    break;
+
+                case 'locate':
+                    if (!mapManager || !mapManager.map) {
+                        this.showNotification('Peta belum siap digunakan.', 'warning', 2500);
+                        return;
+                    }
+
+                    if (!navigator.geolocation) {
+                        this.showNotification('Perangkat Anda tidak mendukung geolokasi.', 'error', 3000);
+                        return;
+                    }
+
+                    this.setButtonBusy(trigger, true);
+
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            this.setButtonBusy(trigger, false);
+                            const { latitude, longitude } = position.coords;
+                            mapManager.centerOn(latitude, longitude, 16);
+                            this.highlightUserLocation(latitude, longitude);
+                            this.showNotification('Peta difokuskan ke lokasi Anda.', 'success', 2800);
+                        },
+                        (error) => {
+                            this.setButtonBusy(trigger, false);
+                            this.showNotification(`Tidak dapat mengakses lokasi: ${error.message}`, 'error', 3200);
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        }
+                    );
+                    break;
+
+                default:
+                    console.warn(`Unhandled quick action: ${action}`);
+                    break;
+            }
+        } catch (error) {
+            console.error(`Quick action "${action}" failed:`, error);
+            this.showNotification(`Terjadi kesalahan: ${error.message}`, 'error', 3200);
+            if (action === 'locate') {
+                this.setButtonBusy(trigger, false);
+            }
+        } finally {
+            if (action !== 'locate') {
+                this.setButtonBusy(trigger, false);
+            }
+        }
+    }
+
+    // Toggle button busy state
+    setButtonBusy(button, isBusy = true) {
+        if (!button || !(button instanceof HTMLElement)) {
+            return;
+        }
+
+        if (isBusy) {
+            button.classList.add('is-disabled');
+            button.setAttribute('aria-busy', 'true');
+            if (button.tagName === 'BUTTON') {
+                button.setAttribute('disabled', 'true');
+            }
+        } else {
+            button.classList.remove('is-disabled');
+            button.removeAttribute('aria-busy');
+            if (button.tagName === 'BUTTON') {
+                button.removeAttribute('disabled');
+            }
+        }
+    }
+
+    // Clear existing location marker
+    clearLocationMarker() {
+        if (this.locationMarker && typeof this.locationMarker.remove === 'function') {
+            this.locationMarker.remove();
+            this.locationMarker = null;
+        }
+    }
+
+    // Highlight user location on map
+    highlightUserLocation(lat, lon) {
+        const app = window.cctvApp;
+        if (!app || !app.mapManager || !app.mapManager.map || typeof L === 'undefined') {
+            return;
+        }
+
+        this.clearLocationMarker();
+
+        this.locationMarker = L.circleMarker([lat, lon], {
+            radius: 10,
+            weight: 3,
+            color: '#0ea5e9',
+            fillColor: '#38bdf8',
+            fillOpacity: 0.6,
+            className: 'user-location-marker'
+        });
+
+        this.locationMarker.addTo(app.mapManager.map);
+        this.locationMarker.bindPopup('<strong>Lokasi Anda</strong>').openPopup();
+
+        setTimeout(() => {
+            this.clearLocationMarker();
+        }, 20000);
     }
 
     // Update statistics display
@@ -549,6 +910,31 @@ class UIManager {
             || window.cctvApp?.dataManager?.summary?.generatedAt
             || null;
         this.updateMetaElement('data-updated', formatDateTime(generatedAt));
+
+        const onlinePercentage = stats.total > 0
+            ? Math.round((stats.online / stats.total) * 100)
+            : 0;
+
+        this.updateMetaElement('badge-total-cctv', `${formatNumber(stats.total)} Kamera aktif`);
+        this.updateMetaElement('badge-online-percentage', `${onlinePercentage}% Online`);
+        this.updateMetaElement('badge-district-total', `${formatNumber(stats.districts)} Kecamatan`);
+
+        const safePercentage = Math.max(0, Math.min(100, onlinePercentage));
+
+        const progressFill = document.getElementById('stat-online-percentage');
+        if (progressFill) {
+            progressFill.style.width = `${safePercentage}%`;
+        }
+
+        const progressBar = document.querySelector('.stat-progress__bar');
+        if (progressBar) {
+            progressBar.setAttribute('aria-valuenow', String(safePercentage));
+        }
+
+        const progressLabel = document.getElementById('stat-online-percentage-label');
+        if (progressLabel) {
+            progressLabel.textContent = `${safePercentage}%`;
+        }
     }
 
     // Update individual stat element
